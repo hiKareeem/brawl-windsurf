@@ -1,0 +1,40 @@
+{
+  "hooks": {
+"pre_write_code": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ],
+    "post_write_code": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ],
+"pre_run_command": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ],
+    "post_run_command": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ],
+"pre_mcp_tool_use": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ],
+    "post_mcp_tool_use": [
+      {
+        "command": "python C:/windsurf-notification.py hook",
+        "show_output": false
+      }
+    ]
+  }
+}
