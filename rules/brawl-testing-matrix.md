@@ -14,8 +14,10 @@ Goal: keep combat/economy stable as content grows (58+ units).
 ### Combat math
 - Damage sanity:
   - physical vs special uses correct stats
-  - element multiplier table applies
   - clamping prevents negative/NaN
+  - element multiplier table applies (PENDING: requires element effectiveness implementation)
+  - STAB applies (PENDING: requires STAB implementation)
+  - Mixed/True semantics covered (PENDING: requires Mixed/True implementation)
 - Cooldown scaling:
   - higher Spd reduces cooldown per CombatMath contract
   - clamp behavior at extremes

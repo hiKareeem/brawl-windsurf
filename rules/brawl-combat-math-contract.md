@@ -8,6 +8,20 @@ globs:
 
 This document defines the v1 canonical formulas. Designers may tune constants via DataAssets, but logic lives in central ExecCalcs/MMCs.
 
+## Implementation status (as of 2025-12-16)
+
+Current shipped behavior in `ExecCalc_Damage`:
+- Supports `DamageClass.Physical` vs `DamageClass.Special` stat selection (Physical is the default when Special is not explicitly present).
+- Applies canonical Ratio clamp (`MinRatio`/`MaxRatio`) and final damage clamp (`MinDamage`/`MaxDamage`).
+- Honors `State.Immune.Damage` (final damage becomes 0).
+
+Not implemented yet (contract remains the target design):
+- Element effectiveness multiplier table (`ElemMult`)
+- STAB multiplier
+- `DamageClass.Mixed` semantics
+- `DamageClass.True` semantics
+- Additional multiplicative (`Mod`) / flat (`Flat`) modifiers
+
 ---
 
 ## 1) Stats schema (authoritative)
