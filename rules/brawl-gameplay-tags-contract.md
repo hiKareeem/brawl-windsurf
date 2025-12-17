@@ -22,7 +22,7 @@ GameplayTags are the primary rules language. Prefer tags + tag queries over enum
 - `Phase.Planning`
 - `Phase.Combat`
 - `Phase.Rewards`
-- `Phase.Shop` (or other non-combat rounds)
+- `Phase.ItemShop` (planning-like ItemShop round; not the UnitShop economy UI)
 
 ### Unit states
 - `State.Alive`

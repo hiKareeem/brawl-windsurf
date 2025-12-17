@@ -6,26 +6,17 @@ globs:
 
 ## Implementation plan (no code, but “what gets built when”)
 
+---
+
 ### Parallelization (2+ engineers)
 Once GameplayTag taxonomy is locked (Milestone 0), the following workstreams can proceed in parallel with low merge-conflict risk if each stays within its module.
 
-#### Workstream A (Tags + Combat Math)
-- Finalize `Element.*` naming and any tag migrations.
-- Complete `ExecCalc_Damage` per [brawl-combat-math-contract.md](cci:7://file:///C:/Users/hi/.codeium/.windsurf/rules/brawl-combat-math-contract.md:0:0-0:0) (element effectiveness, STAB, Mixed/True semantics).
-- Update/extend automation tests for damage + cooldown scaling.
+#### Workstream A/B (Data-driven Units/Abilities) (Next)
+- `UPrimaryDataAsset` Unit/Ability DataAssets + PrimaryAssetId-based references
+- Replicate equipped ability IDs; server grants 1 basic + 1 ultimate
+- Equip allowed in `Phase.Planning` + `Phase.ItemShop` (`Phase.ItemShop` == ItemShop planning-like round)
 
-#### Workstream B (Match Flow + Phases)
-- Implement `UBrawlRoundManagerComponent` as a phase/round state machine:
-  - planning → combat → rewards → shop (if used)
-  - authoritative server timer + replicated `PhaseTimeRemainingSeconds`
-- Ensure placement rules are gated only by server-derived `PhaseTag` (never client input).
-- Add/extend automation tests for phase gating (combat locks field; rewards locks all moves).
-
-#### Workstream C (Data-driven Units/Abilities)
-- Implement `UBrawlUnitData` and `UBrawlAbilityData` (PrimaryAssetIds, tags, curves, cooldown/power).
-- Implement unit init + loadout:
-  - replicate equipped ability IDs
-  - server grants 1 basic + 1 ultimate based on equipped IDs
+---
 
 ### Milestone 0: Foundations
 - Establish GameplayTag taxonomy (see “rules file” section below)

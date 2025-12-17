@@ -13,10 +13,15 @@ Systems in C++; content authored in DataAssets / GAS assets / Blueprint. This do
 ## 1) Asset identity strategy
 - Use PrimaryAssetIds for Units/Abilities/Items/Traits so references are stable and serializable.
 - Runtime objects refer to content by ID, not by raw pointers when possible (supports replay/logging/debug).
+- Project config must enable AssetManager scanning for these PrimaryDataAssets so `FPrimaryAssetId` can be resolved/loaded at runtime (e.g., `[/Script/Engine.AssetManagerSettings]` + `PrimaryAssetTypesToScan` entries).
 
 ---
 
 ## 2) Required DataAssets
+
+Implementation requirement:
+- `UBrawlUnitData` and `UBrawlAbilityData` must derive from `UPrimaryDataAsset`.
+- Runtime/replication should refer to these assets by `FPrimaryAssetId` (stable + serializable).
 
 ### UnitData (UBrawlUnitData)
 Required fields:

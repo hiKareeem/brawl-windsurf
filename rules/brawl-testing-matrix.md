@@ -15,6 +15,10 @@ Goal: keep combat/economy stable as content grows (58+ units).
 - Damage sanity:
   - physical vs special uses correct stats
   - clamping prevents negative/NaN
+- Mod/Flat:
+  - `Data.Mod` multiplies damage and `Data.Flat` adds after multipliers
+  - Mixed applies Mod/Flat once (not per-branch)
+  - True applies Mod/Flat but still ignores STAB/element
 - element multiplier table applies
 - STAB applies
 - Mixed/True semantics covered

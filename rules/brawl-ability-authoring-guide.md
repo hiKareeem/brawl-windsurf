@@ -14,7 +14,7 @@ Goal: abilities remain modular and designer-friendly. Avoid bespoke one-off logi
 Every ability must be built from:
 - AbilityData (numbers + tags + targeting policy + projectile policy)
 - A GameplayAbility class derived from:
-  - `GA_BasicBase` or `GA_UltimateBase`
+  - `UBrawlGA_BasicBase` or `UBrawlGA_UltimateBase`
 
 Do not implement unique cooldown/energy/damage rules inside individual abilities unless the base system cannot express them.
 

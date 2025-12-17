@@ -26,7 +26,7 @@ globs:
 ## GameplayTags are the primary rules language
 - All rule decisions use GameplayTags and tag queries (avoid enums unless perf-critical).
 - Tag namespaces (examples; extend as needed):
-  - `Phase.Planning`, `Phase.Combat`, `Phase.Rewards`, `Phase.Shop`
+  - `Phase.Planning`, `Phase.Combat`, `Phase.Rewards`, `Phase.ItemShop`
   - `State.Alive`, `State.Dead`, `State.CC.Stun`, `State.CC.Silence`, `State.Invulnerable`
   - `DamageClass.Physical`, `DamageClass.Special`
   - `Element.Fire`, `Element.Water`, etc.
@@ -81,8 +81,11 @@ globs:
 - Planning phase:
   - units can move freely between bench and field
   - dropping onto an occupied tile swaps units
-- Shop phase:
+- ItemShop phase:
   - treat as planning for placement (bench<->field allowed; swap-on-drop rules apply)
+- ItemShop phase semantics:
+  - `Phase.ItemShop` represents an **ItemShop** round (carousel-like), not the UnitShop.
+  - Treat `Phase.ItemShop` as **planning-like** for board interactions (bench/field moves + swaps) and **ability equip**.
 - Combat phase:
   - field units are non-interactive (no reposition)
   - bench units may be moved between bench tiles only, and only within the player’s allowed bench row (host row for host player, guest row for guest player)

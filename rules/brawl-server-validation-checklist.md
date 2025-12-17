@@ -90,7 +90,7 @@ Log: `Grid.OverflowResolved`
 Validate:
 - Unit owned by player
 - Ability ids are among the unit’s defined 3 basic/3 ultimate options
-- Phase allows changing loadout (default: planning only)
+- Phase allows changing loadout (default: `Phase.Planning`; also allow `Phase.ItemShop` if ItemShop is planning-like)
 Commit:
 - Replicate equipped IDs
 - Server grants/removes GAS abilities accordingly

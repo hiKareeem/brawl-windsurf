@@ -20,8 +20,16 @@ Current shipped behavior in `ExecCalc_Damage`:
 - Applies element effectiveness from tuning rules (`ElementEffectivenessRules`) keyed by ability element vs target element.
 - Honors `State.Immune.Damage` (final damage becomes 0).
 
-Not implemented yet (contract remains the target design):
-- Additional multiplicative (`Mod`) / flat (`Flat`) modifiers
+Also implemented:
+- SetByCaller damage modifiers:
+  - `Data.Mod` (optional, multiplicative, defaults to 1.0; non-finite treated as 1.0)
+  - `Data.Flat` (optional, additive, defaults to 0.0; non-finite treated as 0.0)
+
+Ordering (v1):
+- For Physical/Special/Mixed:
+  - `Raw = (BaseDamage * ElemMult * StabMult * Mod) + Flat`
+- For True:
+  - `Raw = (Power * Mod) + Flat` (True still ignores STAB and element effectiveness)
 
 ---
 
@@ -65,6 +73,9 @@ Let:
 - ElemMult = element effectiveness multiplier (defaults to 1.0 unless a rule table says otherwise)
 - Mod = product of all multiplicative modifiers from tags/effects (defaults to 1.0)
 - Flat = sum of flat add/sub modifiers (defaults to 0)
+- StabMult = STAB multiplier (1.0 by default; `StabMultiplier` when source shares the ability’s `Element.*` tag)
+
+2) Raw = (Power * Ratio * ElemMult * StabMult * Mod) + Flat
 
 Compute:
 1) Ratio = clamp(A / max(D, 1), MinRatio, MaxRatio)
