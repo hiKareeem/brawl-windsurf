@@ -28,6 +28,12 @@ Do not implement unique cooldown/energy/damage rules inside individual abilities
   - Element tag (`Element.*`)
   - Optional modifiers via SetByCaller magnitudes and tags
   - `ExecCalc_Damage` applies mitigation, type effectiveness, and STAB centrally.
+Optional standard modifiers (SetByCaller magnitudes):
+- `Data.Mod` (multiplicative, defaults to 1.0)
+- `Data.Flat` (additive, defaults to 0.0)
+
+Cooldown authoring convention:
+- When applying a cooldown GameplayEffect, set SetByCaller `Data.CooldownBaseSeconds` from `AbilityData.CooldownBaseSeconds` so the cooldown MMC can apply the global Spd scaling policy.
 
 ---
 

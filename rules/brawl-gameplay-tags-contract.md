@@ -71,6 +71,24 @@ Elements:
 - `Ability.Basic.<Name>`
 - `Ability.Ultimate.<Name>`
 
+### Data (SetByCaller keys)
+`Data.*` tags are reserved as **numeric SetByCaller magnitudes** passed into GameplayEffect specs.
+They are not “identity” tags and must not be repurposed for other semantics.
+
+Required keys:
+- `Data.Power`
+  - Base ability power input for `ExecCalc_Damage` (>= 0)
+- `Data.Mod`
+  - Multiplicative modifier term for damage (defaults to 1.0 when absent)
+- `Data.Flat`
+  - Flat add/sub modifier term for damage (defaults to 0.0 when absent)
+- `Data.CooldownBaseSeconds`
+  - Base cooldown seconds input for the cooldown duration calculation (MMC)
+
+Policy:
+- Treat missing `Data.*` keys as the documented defaults.
+- If you introduce a new `Data.*` key, update this contract + the owning central policy (`ExecCalc_*` / `MMC_*`) so behavior stays auditable and consistent.
+
 ---
 
 ## 3) Ownership rules (who can add/remove tags)
@@ -89,6 +107,8 @@ These tags have hard-coded meaning in systems and must not be repurposed:
 - `State.CC.*` for targeting/cast restrictions
 - `DamageClass.*` for ExecCalc formula branch
 - `Faction.*` for team logic and PvE vs PvP handling
+- `Data.*` SetByCaller keys for central math policies (damage, cooldown, etc.)
+  - At minimum: `Data.Power`, `Data.Mod`, `Data.Flat`, `Data.CooldownBaseSeconds`
 
 ---
 

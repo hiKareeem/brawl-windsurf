@@ -100,6 +100,10 @@ Shared pool:
   - Trait component recomputes counts on roster changes and applies effects for ActiveCounts only
 - Economy:
   - Shop offers are explicit replicated entries; offer generation is server-only
+- Ability execution:
+  - AbilityData.BasePower is passed into damage effects via SetByCaller `Data.Power`.
+  - AbilityData.CooldownBaseSeconds is passed into cooldown effects via SetByCaller `Data.CooldownBaseSeconds` (then scaled by the global cooldown MMC).
+  - Optional standardized modifiers may be passed via `Data.Mod` and `Data.Flat` (see Combat Math + GameplayTags contracts).
 
 ---
 
