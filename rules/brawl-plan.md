@@ -11,10 +11,12 @@ globs:
 ### Parallelization (2+ engineers)
 Once GameplayTag taxonomy is locked (Milestone 0), the following workstreams can proceed in parallel with low merge-conflict risk if each stays within its module.
 
-#### Workstream A/B (Data-driven Units/Abilities) (Next)
-- `UPrimaryDataAsset` Unit/Ability DataAssets + PrimaryAssetId-based references
-- Replicate equipped ability IDs; server grants 1 basic + 1 ultimate
-- Equip allowed in `Phase.Planning` + `Phase.ItemShop` (`Phase.ItemShop` == ItemShop planning-like round)
+#### Workstream A/B (Milestone 3: Combat loop v1 + BrawlAI start) (Next)
+- [Carry-forward] RPC-layer automation test coverage for EquipAbilities (reject in `Phase.Combat`/`Phase.Rewards`; assert equipped IDs update on success)
+- Add a BrawlCore match-context interface (implemented by `ABrawlGameState`) so Abilities/AI can emit EventLog base fields without depending on BrawlMatch
+- BrawlAbilities: real TargetingPolicy + TargetResult types; ProjectileActor; GA bases emit structured combat events via EventBus
+- Start BrawlAI module (AIController + threat model + debug), focused only on combat decisions
+- ItemShop match flow remains deferred (do not add `Phase.ItemShop` to the RoundManager loop yet)
 
 ---
 

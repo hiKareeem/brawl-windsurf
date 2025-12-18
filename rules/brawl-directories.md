@@ -53,6 +53,7 @@ Purpose: shared types, tags, logging, stable IDs, event bus, interfaces. No game
 - `Public/Interfaces/BrawlCombatantInterface.h` (ASC + UnitInstanceId + Alive)
 - `Public/Interfaces/BrawlTeamAgentInterface.h` (TeamId / OwnerPlayerId)
 - `Public/Interfaces/BrawlGridOccupantInterface.h` (GridCoord accessors)
+- `Public/Interfaces/BrawlMatchContextInterface.h` (MatchId/RoundIndex/PhaseTag/ServerTimeSeconds for event logging; implemented by `ABrawlGameState`)
 ---
 ## 2) Module: BrawlGrid
 Purpose: board/bench representation + placement rules + tile mods.

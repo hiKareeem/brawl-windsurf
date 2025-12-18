@@ -41,6 +41,8 @@ If anything here conflicts with other docs, follow them in this order:
 - Use `TObjectPtr<>` for `UObject` UPROPERTY references where appropriate (UE5 style).
 - Use `const` correctness and pass heavy structs by `const&`.
 - Use UPROPERTY macros to categorize Blueprint readable properties under a "Brawl" header (Category = "Brawl|x")
+- Do not include `Engine/PrimaryAssetId.h` (not present in this UE setup).
+- If `FPrimaryAssetId` needs an explicit include, use `UObject/PrimaryAssetId.h`.
 
 ---
 
