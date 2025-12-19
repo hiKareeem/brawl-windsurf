@@ -88,6 +88,9 @@ Log: `Grid.OverflowResolved`
 ## 4) Ability loadout requests
 ### EquipAbilities(UnitId, BasicAbilityId, UltimateAbilityId)
 Validate:
+- AbilityData kind must match the requested slot:
+  - Basic slot must be kind `Ability.Basic`
+  - Ultimate slot must be kind `Ability.Ultimate`
 - Unit owned by player
 - Ability ids are among the unit’s defined 3 basic/3 ultimate options
 - Phase allows changing loadout (default: `Phase.Planning`; also allow `Phase.ItemShop` if ItemShop is planning-like)

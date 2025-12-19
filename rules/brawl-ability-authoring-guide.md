@@ -43,15 +43,24 @@ Each ability references a TargetingPolicy that defines:
 - behavior on target death during cast:
   - Retarget / Fizzle / LastPosition
 - eligibility tag queries (e.g., ignore `State.Dead`, ignore `State.Immune.CC`, etc.)
+- currently global within the current world; arena scoping deferred
+- `LastPosition` clarification:
+  - When `LastPosition` is chosen, the “target position snapshot” is taken at target resolution time and should be recorded in `Combat.TargetChosen` (and/or `Combat.ProjectileSpawned` if a projectile is used).
 
 ---
 
 ## 4) Projectiles
 If travel time matters:
-- Use projectile actor policy; impact applies effects/damage.
-- Emit event log:
-  - ProjectileSpawned
-  - ProjectileImpacted
+- Use a projectile actor policy; **impact applies effects/damage** (server-authoritative).
+
+- Snapshot timing:
+  - If using `LastPosition` (or any “fire at location” behavior), capture the target position snapshot at **target resolution / cast start time**, not at impact time.
+  - The projectile uses that snapshot for its aim. It does not “retarget mid-flight”.
+
+- Event log (server-only):
+  - Emit `Combat.ProjectileSpawned` when the projectile is spawned.
+  - Emit exactly one `Combat.ProjectileImpacted` when the projectile ends (hit, miss, expiry, destroyed).
+  - All projectile event timestamps (`SpawnTimeSeconds`, `ImpactTimeSeconds`) must use the same timebase as `FBrawlEventBase.ServerTimeSeconds` (match time since start).
 
 ---
 

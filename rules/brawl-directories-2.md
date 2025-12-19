@@ -6,7 +6,7 @@ globs:
 
 ---
 ## 7) Module: BrawlMatch
-Purpose: phase/round state machine, creep rounds, orchestration, match event log persistence.
+Purpose: phase/round state machine, creep rounds, orchestration, match event log buffering (persistence/export deferred).
 
 ### Files / Classes
 **Game framework**
@@ -33,9 +33,9 @@ Purpose: phase/round state machine, creep rounds, orchestration, match event log
 **Creeps**
 - `Public/Components/BrawlCreepSpawnerComponent.h` (or Actor if preferred)
 
-**Event log persistence**
-- `Public/Subsystems/BrawlMatchEventLogSubsystem.h`
-  - Subscribes to EventBus; buffers/writes structured events
+**Event log**
+- [Public/Subsystems/BrawlMatchEventLogSubsystem.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Subsystems/BrawlMatchEventLogSubsystem.h:0:0-0:0)
+  - Subscribes to EventBus; buffers recent events in-memory (base `FBrawlEventBase` fields + struct name) for debug/testing. Persistence/export is deferred.
 ---
 ## 8) Module: BrawlNet
 Purpose: replication scaling + replay recording hooks.
