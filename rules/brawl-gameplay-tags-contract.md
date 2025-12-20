@@ -28,6 +28,10 @@ GameplayTags are the primary rules language. Prefer tags + tag queries over enum
 - `State.Alive`
 - `State.Dead`
 
+### Cooldowns (ability activation gating)
+- `State.Cooldown.Basic`
+- `State.Cooldown.Ultimate`
+
 ### Crowd control and immunities
 - `State.CC.Stun`
 - `State.CC.Silence`
@@ -75,6 +79,12 @@ Elements:
 `Data.*` tags are reserved as **numeric SetByCaller magnitudes** passed into GameplayEffect specs.
 They are not “identity” tags and must not be repurposed for other semantics.
 
+Optional reserved keys (v1):
+- `Data.EnergyGained`
+  - Energy gained on a successful cast (or other designer-authored trigger). Defaults to 0 when absent.
+- `Data.EnergyCost`
+  - Energy spent on a successful cast. Defaults to 0 when absent.
+
 Required keys:
 - `Data.Power`
   - Base ability power input for `ExecCalc_Damage` (>= 0)
@@ -104,6 +114,7 @@ Policy:
 These tags have hard-coded meaning in systems and must not be repurposed:
 - `Phase.*` for phase gating/validation
 - `State.Dead` for removal/target invalidation
+- `State.Cooldown.*` for ability activation gating (e.g., basics blocked by `State.Cooldown.Basic`)
 - `State.CC.*` for targeting/cast restrictions
 - `DamageClass.*` for ExecCalc formula branch
 - `Faction.*` for team logic and PvE vs PvP handling

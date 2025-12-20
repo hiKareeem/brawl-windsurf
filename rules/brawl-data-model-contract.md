@@ -99,8 +99,13 @@ Shared pool:
 
 ## 3) Runtime mapping rules
 - Unit spawn:
-  - UnitData initializes base tags + star level + scaled attributes (via curve table)
-  - UnitLoadout selects 1 basic + 1 ultimate -> server grants abilities
+  - The server initializes base combat/energy/speed attributes immediately after `ASC->InitAbilityActorInfo(...)` once `UnitData` is known.
+  - Base values are derived from UnitData stat curves using the unit’s current `StarLevel`.
+  - Pooled defaults (v1):
+    - `CurrentHealth` starts at `MaxHealth`.
+    - `CurrentEnergy` starts at `0` (unless explicitly overridden by a round/trait/effect).
+  - Implementation note:
+    - Prefer setting ASC base values directly (e.g., `SetNumericAttributeBase`) over authoring per-unit “default attribute” GameplayEffects, to keep “add a new unit” authoring lightweight and consistent.
 - Traits:
   - Trait component recomputes counts on roster changes and applies effects for ActiveCounts only
 - Economy:

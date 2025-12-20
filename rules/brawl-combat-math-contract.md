@@ -140,4 +140,10 @@ Cooldown scaling must be implemented centrally (MMC or a single shared function)
 - Ultimate casts when Energy >= MaxEnergy (default behavior).
 - Exact energy gain values are authored in AbilityData/GE, but the trigger rule is centralized.
 
+Energy spend/gain application (v1):
+- On successful cast, apply both cost and gain on the server:
+  - `NewEnergy = clamp(CurrentEnergy - max(EnergyCost, 0) + max(EnergyGained, 0), 0..MaxEnergy)`
+- Ultimate default trigger remains:
+  - cast when `CurrentEnergy >= MaxEnergy` (then cost/gain are applied as above).
+
 ---

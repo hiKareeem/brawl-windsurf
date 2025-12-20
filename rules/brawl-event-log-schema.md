@@ -79,6 +79,13 @@ It is NOT required for replay playback, but must be stable and comprehensive.
 - `Combat.UnitDied`
   - unitId, killerId (optional), time
 
+Field encoding notes (v1):
+- `AbilityId` (all combat events):
+  - Prefer [UBrawlAbilityData::GetPrimaryAssetId().PrimaryAssetName](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlAbilities/Public/Data/BrawlAbilityData.h:19:1-19:60) (asset name) when AbilityData is available.
+  - Fallback (only when no AbilityData exists): the `UGameplayAbility` class name (`Ability->GetClass()->GetFName()`).
+- `Combat.TargetChosen.Policy`:
+  - Encodes the invalidation policy token: `Retarget` / `Fizzle` / `LastPosition` (not the TargetingPolicy asset name).
+
 ---
 
 ## 3) Emission points (guarantees)
