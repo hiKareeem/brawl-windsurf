@@ -39,6 +39,13 @@ Required fields:
 - Visuals:
   - Unit BP class / skeletal mesh / anim set (as needed)
 
+Stat curves (v1 schema):
+- A UnitData may reference a single `UCurveTable` (`StatCurveTable`) containing `FRichCurve`/`FRealCurve` rows.
+- Each row represents one stat curve, evaluated at `X = StarLevel` (clamped 1..3).
+- Canonical row names (defaults):
+  - `MaxHealth`, `Attack`, `SpecialAttack`, `Defense`, `SpecialDefense`, `Speed`, `MaxEnergy`
+- Runtime reads are server-authoritative; missing table/row evaluates to the provided default (v1 code default is `0.0`).
+
 ### AbilityData (UBrawlAbilityData)
 Required fields:
 - Id (PrimaryAssetId)
@@ -114,6 +121,13 @@ Shared pool:
   - AbilityData.BasePower is passed into damage effects via SetByCaller `Data.Power`.
   - AbilityData.CooldownBaseSeconds is passed into cooldown effects via SetByCaller `Data.CooldownBaseSeconds` (then scaled by the global cooldown MMC).
   - Optional standardized modifiers may be passed via `Data.Mod` and `Data.Flat` (see Combat Math + GameplayTags contracts).
+
+### Star combining / StarLevel changes (v1 rule)
+- Unit StarLevel upgrades (combines) must never resolve for a unit in combat. Combat is when it is Phase.Combat and the unit is on the field NOT on the bench. Units on the bench can still combine.
+- Pending combines resolve at the start of the next `Phase.Planning` (TFT-like).
+- On StarLevel increase, the server reinitializes pools:
+  - `CurrentHealth = MaxHealth`
+  - `CurrentEnergy = 0`
 
 ---
 

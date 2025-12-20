@@ -70,6 +70,7 @@ Replicate:
 - Equipped ability IDs (1 basic + 1 ultimate) as replicated state (for UI + replay)
 - Alive/dead state and death time marker (if needed)
 - Transform state 
+- `UnitDataId` (`FPrimaryAssetId`) so clients/replays/tools can resolve unit content identity (portrait/tags/stat curves/etc).
 
 Movement:
 - Units move via CharacterMovement; combat navmesh determinism is not required.
