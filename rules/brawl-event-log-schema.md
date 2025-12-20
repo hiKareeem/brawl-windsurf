@@ -143,6 +143,10 @@ Recommended pattern:
 1) Check `Entry.EventStruct` (or `Entry.EventStructName`) matches the expected type.
 2) Interpret/copy the payload using the struct reflection API.
 
+Important:
+- Do NOT `reinterpret_cast` `Entry.EventBytes` into an event struct type in tests/tools.
+- Always decode by copying via `UScriptStruct::InitializeStruct` + `CopyScriptStruct` (example below). This avoids alignment and non-POD lifetime issues (see also “5.5 Alignment note”).
+
 Example (copy out):
 ```cpp
 const FBrawlMatchBufferedEventEntry& Entry = ...;

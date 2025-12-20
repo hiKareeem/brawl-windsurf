@@ -44,6 +44,10 @@ Each ability references a TargetingPolicy that defines:
   - Retarget / Fizzle / LastPosition
 - eligibility tag queries (e.g., ignore `State.Dead`, ignore `State.Immune.CC`, etc.)
 - currently global within the current world; arena scoping deferred
+- Determinism (required):
+  - Target resolution must be deterministic across runs; do not rely on iteration order for tie resolution.
+  - When candidates tie (e.g., `NearestEnemy` distance within an epsilon), break ties by lowest stable `FBrawlUnitInstanceId` (i.e., `UnitId.Value`).
+  - Use a small epsilon (recommend: `KINDA_SMALL_NUMBER` for `DistSq` comparisons) and apply this tie-break consistently for any new selection modes.
 - `LastPosition` clarification:
   - When `LastPosition` is chosen, the “target position snapshot” is taken at target resolution time and should be recorded in `Combat.TargetChosen` (and/or `Combat.ProjectileSpawned` if a projectile is used).
 

@@ -25,6 +25,11 @@ Goal: keep combat/economy stable as content grows (58+ units).
 - Cooldown scaling:
   - higher Spd reduces cooldown per CombatMath contract
   - clamp behavior at extremes
+- Event log buffering (typed payloads):
+  - Publish a small set of known derived events through `UBrawlEventBusSubsystem`.
+  - Assert `UBrawlMatchEventLogSubsystem` buffers the correct `EventStructName` AND that derived fields survive via `EventBytes` decoding.
+  - Assert `SequenceNumber` increases monotonically.
+  - Example: `Brawl.EventLog.Buffering.LVL_Sandbox`
 
 ### Core rules
 - Trigger ordering:
