@@ -35,7 +35,7 @@ Purpose: phase/round state machine, creep rounds, orchestration, match event log
 
 **Event log**
 - [Public/Subsystems/BrawlMatchEventLogSubsystem.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Subsystems/BrawlMatchEventLogSubsystem.h:0:0-0:0)
-  - Subscribes to EventBus; buffers recent events in-memory (base `FBrawlEventBase` fields + struct name) for debug/testing. Persistence/export is deferred.
+  - Subscribes to EventBus; buffers recent events in-memory (base `FBrawlEventBase` fields + event `UScriptStruct` + deep-copied payload bytes) for debug/testing. Persistence/export is deferred.
 ---
 ## 8) Module: BrawlNet
 Purpose: replication scaling + replay recording hooks.

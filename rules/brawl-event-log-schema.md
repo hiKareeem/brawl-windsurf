@@ -9,6 +9,16 @@ globs:
 Event Log exists alongside network replay to support debugging/testing/analysis.
 It is NOT required for replay playback, but must be stable and comprehensive.
 
+[Later / when GameLift is added] you have 2 common options:
+- Option A (recommended early): GameLift log upload
+  - You write your event log file (and optionally replay .demo) into a directory that GameLift is configured to collect as “server logs”.
+  - GameLift can then upload those logs to S3 as part of its fleet log collection flow.
+  - Upside: no per-event networking, minimal code, great for “save locally first, cloud later”.
+- Option B: Explicit upload to AWS
+  - On match end, the server uploads artifacts to S3 / CloudWatch / Kinesis/Firehose.
+  - Upside: more control + near-real-time analytics possible.
+  - Downside: AWS SDK integration, IAM roles/credentials, retry/backoff, failure modes, and more code surface area.
+
 ---
 
 ## 1) Global requirements
@@ -99,3 +109,58 @@ It is NOT required for replay playback, but must be stable and comprehensive.
   3) OnDeath
 
 ---
+
+## 5) Runtime buffering contract (in-memory ring buffer)
+
+The server maintains an in-memory ring buffer of recently published events via `UBrawlMatchEventLogSubsystem` (BrawlMatch).
+This exists to support automation tests and debug tooling. It is not required for replay playback.
+
+### 5.1 Server-only behavior
+- The subsystem is server-only: it is inactive on clients and clients never author buffered events.
+
+### 5.2 Buffered entry representation
+Each buffered entry stores:
+- `SequenceNumber` (monotonic identifier)
+- `EventStructName` (the published event `UScriptStruct` name)
+- `EventBase` (the base `FBrawlEventBase` fields for quick filtering)
+- `EventStruct` (the event payload `UScriptStruct*`)
+- `EventBytes` (a deep-copied, fully-constructed instance of the published event struct)
+
+Important: `EventBytes` is NOT a serialized payload. It is raw storage holding a constructed `UScriptStruct` instance.
+- It must be created using `UScriptStruct::InitializeStruct` and copied using `UScriptStruct::CopyScriptStruct`.
+- It must be destroyed using `UScriptStruct::DestroyStruct`.
+- Do not treat it as `memcpy`/POD bytes.
+
+### 5.3 Ordering and retrieval
+- The runtime ring buffer preserves publish order.
+- [GetBufferedEvents(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Subsystems/BrawlMatchEventLogSubsystem.h:36:4-36:83) returns entries in order: oldest → newest (publish order).
+- Retrieval produces independent copies of entries (callers may safely retain/inspect them without depending on the subsystem’s lifetime).
+
+If/when events are persisted/exported to a file, the persistence layer is responsible for applying any additional deterministic ordering rules described in “## 4) Ordering and stability”.
+
+### 5.4 Type-safe decoding for tests/tools
+Recommended pattern:
+1) Check `Entry.EventStruct` (or `Entry.EventStructName`) matches the expected type.
+2) Interpret/copy the payload using the struct reflection API.
+
+Example (copy out):
+```cpp
+const FBrawlMatchBufferedEventEntry& Entry = ...;
+
+if (Entry.EventStruct == FBrawlCombatProjectileSpawnedEvent::StaticStruct())
+{
+    FBrawlCombatProjectileSpawnedEvent Payload;
+    FBrawlCombatProjectileSpawnedEvent::StaticStruct()->InitializeStruct(&Payload);
+    FBrawlCombatProjectileSpawnedEvent::StaticStruct()->CopyScriptStruct(&Payload, Entry.EventBytes.GetData());
+
+    // read Payload fields...
+
+    FBrawlCombatProjectileSpawnedEvent::StaticStruct()->DestroyStruct(&Payload);
+}```
+
+### 5.5 Alignment note (current implementation)
+Event payloads are stored in TArray<uint8>. This relies on engine allocator alignment being sufficient for all event types. If an event type requires an alignment greater than the allocator guarantee (see EventStruct->GetMinAlignment()), the buffer storage must be updated to use aligned allocation.
+
+### 5.6 Sequence number semantics
+ - SequenceNumber is monotonic within a world lifetime.
+ - Clearing the buffer does not reset the monotonic sequence generator (i.e., new events continue with increasing SequenceNumber).
