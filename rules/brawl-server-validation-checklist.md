@@ -50,6 +50,10 @@ Commit:
 - Generate new offers (server-only; seeded if RNG)
 Log: `Economy.Reroll`
 
+Additional commit requirements (Shop RNG + pool integrity):
+- On reroll, the server must return any currently-unpurchased reserved offers back into the shared pool before generating the new offer list.
+- Offer generation must be server-only and use the seeded RNG policy (never accept client-provided offer results).
+
 ### BuyXP()
 Validate:
 - Phase allows

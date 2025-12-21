@@ -4,7 +4,6 @@ description:
 globs: 
 ---
 
----
 ## 7) Module: BrawlMatch
 Purpose: phase/round state machine, creep rounds, orchestration, match event log buffering (persistence/export deferred).
 

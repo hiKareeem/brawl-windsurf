@@ -15,6 +15,11 @@ Systems in C++; content authored in DataAssets / GAS assets / Blueprint. This do
 - Runtime objects refer to content by ID, not by raw pointers when possible (supports replay/logging/debug).
 - Project config must enable AssetManager scanning for these PrimaryDataAssets so `FPrimaryAssetId` can be resolved/loaded at runtime (e.g., `[/Script/Engine.AssetManagerSettings]` + `PrimaryAssetTypesToScan` entries).
 
+### Season gating (deferred)
+- Seasonal content gating is intentionally deferred until we have enough content to justify it.
+- When implemented, the Season asset should be a `UPrimaryDataAsset` (BrawlCore) that allowlists PrimaryAssetIds (starting with UnitData ids) to constrain shared-pool composition.
+- Until then, shared pool composition is derived from AssetManager scanning of Unit PrimaryAssets (server-only).
+
 ---
 
 ## 2) Required DataAssets
@@ -98,6 +103,27 @@ Required fields:
 - Streak reward table
 - XP per buy and level thresholds
 - Roll odds by level (designer-owned)
+
+### Economy tuning (v0 semantics)
+
+**Tuning owner**
+- [UBrawlEconomyTuningData](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlEconomy/Private/Data/BrawlEconomyTuningData.cpp:2:0-7:1) is the single source of truth for economy tuning (XP curve, max level, shared pool copy counts, and a pointer to shop odds).
+
+**XP curve semantics**
+- `XPToNextLevel[i]` is the **XP required to advance from Level (i+1) to Level (i+2)**.
+- Player Level is derived from **TotalXP** by consuming thresholds in order (Level starts at 1).
+- `MaxLevel` clamps the computed Level (minimum 1).
+
+**Shop odds semantics**
+- `UBrawlShopOddsData::OddsByLevel` stores roll probabilities by Level.
+- Odds lookup uses “closest lower-or-equal” semantics:
+  - If an exact row for Level exists, use it.
+  - Otherwise, use the highest row where `Row.Level <= Level`.
+  - This allows sparse tables (e.g., define Level 1 + 4..10; Levels 2/3 reuse Level 1).
+
+**Shared pool semantics**
+- Shared pool copy counts are driven by `CopiesPerUnitByCost[cost]` (cost is clamped 1..5).
+- Pool composition is derived from the Unit PrimaryAssets (server-only), and copies-per-unit defines how many copies of each unit exist in the pool for its cost tier.
 
 Shared pool:
 - Pool counts per unit type and rules for consume/return
