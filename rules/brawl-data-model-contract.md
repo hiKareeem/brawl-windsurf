@@ -122,13 +122,6 @@ Shared pool:
   - AbilityData.CooldownBaseSeconds is passed into cooldown effects via SetByCaller `Data.CooldownBaseSeconds` (then scaled by the global cooldown MMC).
   - Optional standardized modifiers may be passed via `Data.Mod` and `Data.Flat` (see Combat Math + GameplayTags contracts).
 
-### Star combining / StarLevel changes (v1 rule)
-- Unit StarLevel upgrades (combines) must never resolve for a unit in combat. Combat is when it is Phase.Combat and the unit is on the field NOT on the bench. Units on the bench can still combine.
-- Pending combines resolve at the start of the next `Phase.Planning` (TFT-like).
-- On StarLevel increase, the server reinitializes pools:
-  - `CurrentHealth = MaxHealth`
-  - `CurrentEnergy = 0`
-
 ---
 
 ## 4) “Add a new unit” checklist (must remain simple)

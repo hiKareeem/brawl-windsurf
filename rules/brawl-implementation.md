@@ -108,6 +108,14 @@ globs:
 An “arena board” is not a special actor type. It refers to an existing ABrawlBoardActor that the Match designates as the host board for a combat pairing for the current round.
 Opponent units (and their bench) are transferred onto the host board’s guest half. The guest player’s home board remains spawned but is treated as inactive/empty for that round.
 
+### Star combining / StarLevel changes (v1 rule)
+- Unit StarLevel upgrades (combines) must never resolve for a unit actively IN combat. It is in combat when it is Phase.Combat and the unit is on the field NOT on the bench. 
+- Units on the bench can still combine at any point.
+- Pending combines involving a unit in combat resolve at the start of the next `Phase.Planning` (TFT-like).
+- On StarLevel increase, the server reinitializes pools:
+  - `CurrentHealth = MaxHealth`
+  - `CurrentEnergy = 0`
+
 ## Data-driven authoring requirements
 - Designers author content via DataAssets + GAS assets:
   - UnitData drives stat curves, tags, ability options, visuals

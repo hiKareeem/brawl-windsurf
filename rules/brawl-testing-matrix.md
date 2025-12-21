@@ -85,3 +85,24 @@ Goal: keep combat/economy stable as content grows (58+ units).
 - If a test needs a PlayerController/PlayerState, spawn the server-side [ABrawlPlayerController](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerController.cpp:20:0-23:1), call `InitPlayerState()`, and manually wire only the minimal required match state (e.g., BoardActor/Unit ownership) for the scenario.
 
 ---
+
+## 4) Automation test harness standardization
+
+### Sandbox world readiness gating (LVL_Sandbox)
+- Prefer selecting a `Game`/`PIE` world whose `GetMapName()` contains `LVL_Sandbox`
+- Ignore `World->bIsTearingDown`
+- In latent [Update()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Tests/BrawlUnitLoadoutAutomationTest.cpp:64:0-231:1), early-return `false` until:
+  - `World != nullptr`
+  - `World->HasBegunPlay() == true`
+  - `World->GetMapName().Contains("LVL_Sandbox") == true`
+- Always reject `World->GetNetMode() == NM_Client`
+
+### Typed EventLog payload decoding
+- Never `reinterpret_cast` `EventBytes`
+- Validate `Entry.EventStruct == TEvent::StaticStruct()`
+- Copy out via `InitializeStruct` + `CopyScriptStruct`, then `DestroyStruct`
+
+### Projectile ordering test mitigation
+- When asserting `ProjectileImpacted` before `DamageApplied`, match `DamageApplied` using
+  the impacted payload’s `InstigatorUnitId` + `TargetUnitId` (and optionally `AbilityId`),
+  not the first `DamageApplied` globally.
