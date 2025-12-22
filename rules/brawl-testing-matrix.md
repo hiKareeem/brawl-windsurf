@@ -60,6 +60,13 @@ Goal: keep combat/economy stable as content grows (58+ units).
 ### Economy
 - bench full prevents shop purchase
 - shared pool consume/return invariants
+- shop purchase rollback correctness:
+  - force a failure after gold spend but before offer consume (test-only hook is acceptable under `WITH_AUTOMATION_TESTS`)
+  - assert gold refunded and no unit remains in board/roster
+
+- test isolation note (LVL_Sandbox):
+  - sandbox may contain pre-existing server PlayerStates whose ShopComponents auto-roll offers on BeginPlay (reserving shared-pool copies)
+  - tests asserting exact shared-pool remaining/max should clear other shops’ reservations first
 
 ---
 
