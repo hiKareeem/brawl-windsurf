@@ -8,7 +8,18 @@ globs:
   - Server-only FRandomStream seeded by (MatchId, PlayerId, RollSequenceNumber); offers are fully determined by these inputs and replicated to clients.
 - Shared pool semantics:
   - Shop offer generation “reserves” pool copies; reroll/roll returns unbought offers to the pool.
+- Purchase consumption rule:
+  - When a player buys a shop offer that was generated from the shared pool, the reserved pool copy becomes permanently consumed.
+  - Implementation detail: on purchase, remove that offer’s `UnitDataId` from the shop’s `ReservedPoolUnitIds` so it is NOT returned to the pool on the next reroll/roll.
+- Offer roll exhaustion policy:
+  - For each offer slot, if the initially rolled cost bucket has no available shared-pool copies, re-roll among the remaining costs (without repeating a cost) until a unit is found.
+  - If no cost bucket has availability, fall back to rolling any available unit from the pool.
+  - If the pool is fully exhausted/unavailable (sandbox/dev), fall back to deterministic/test unit IDs.
+- Deterministic/fallback offers (sandbox):
+  - If the shared pool is unavailable/exhausted, the shop may fall back to deterministic unit IDs (e.g., `DeterministicOfferUnitIds` / `DA_TestUnit`) for sandbox/dev.
+  - These fallback offers do not reserve/consume the shared pool.
   - Default pool copy counts (when tuning not provided): 1-cost 29, 2-cost 22, 3-cost 18, 4-cost 12, 5-cost 10.
+
 - XP thresholds:
   - Progression uses a data-driven XPToNextLevel table; cumulative XP is consumed to compute Level.
 

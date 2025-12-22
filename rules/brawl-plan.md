@@ -77,6 +77,7 @@ If Economy is not implemented yet, it is acceptable to complete placement-only r
 - (UI) Implement `BrawlUI` MVVM ViewModels for debug/spectate:
   - Board/Occupancy, RoundTimer, DamageRecap (later)
   - No gameplay rules in UI (presentation only)
+  - Prefer CommonUI for eventual controller support if possible
 
 ### Milestone 7: Scale to 8 players
 - Arena layout strategy:

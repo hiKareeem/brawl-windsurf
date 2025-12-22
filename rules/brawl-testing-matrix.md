@@ -106,3 +106,15 @@ Goal: keep combat/economy stable as content grows (58+ units).
 - When asserting `ProjectileImpacted` before `DamageApplied`, match `DamageApplied` using
   the impacted payload’s `InstigatorUnitId` + `TargetUnitId` (and optionally `AbilityId`),
   not the first `DamageApplied` globally.
+
+---
+
+## Automation tests and Unity builds
+
+Unreal Unity builds can compile multiple `.cpp` files into one translation unit.
+Therefore:
+- Do NOT define shared helper functions/templates in anonymous namespaces inside test `.cpp` files.
+- Shared automation test helpers must live in:
+  - [Source/BrawlMatch/Private/Tests/BrawlAutomationTestHelpers.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Tests/BrawlAutomationTestHelpers.h:0:0-0:0)
+  - [Source/BrawlMatch/Private/Tests/BrawlAutomationTestEventLogHelpers.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Tests/BrawlAutomationTestEventLogHelpers.h:0:0-0:0)
+  as `inline` functions/templates in a named namespace.

@@ -99,6 +99,20 @@ If anything here conflicts with other docs, follow them in this order:
 - Never trust client-supplied outcomes (damage, RNG, legality).
 - Prefer replication-efficient containers (FastArray) for lists (shop offers, board occupancy) as specified in the contract docs.
 
+## Teardown-safe replication handlers (PIE / travel / disconnect)
+
+`OnRep_*` may execute during teardown (PIE end, map travel, disconnect) when the `UWorld` and/or owning `AbilitySystemComponent` is partially destroyed.
+
+Policy:
+- AttributeSet `OnRep_*` implementations MUST:
+  - early-out if `UWorld* World = GetWorld()` is null OR `World->bIsTearingDown`
+  - require `IsValid(GetOwningAbilitySystemComponent())` before calling into GAS
+  - update via `AbilityComp->SetBaseAttributeValueFromReplication(...)`
+
+Rationale:
+- Prevents editor/PIE teardown crashes and late-replication lifetime hazards.
+- This is runtime hardening, not test-only behavior.
+
 ---
 
 ## Logging and diagnostics

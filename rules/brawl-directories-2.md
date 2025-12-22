@@ -45,6 +45,8 @@ Purpose: replication scaling + replay recording hooks.
 - `Public/Subsystems/BrawlReplaySubsystem.h`
   - `UBrawlReplaySubsystem : UGameInstanceSubsystem`
   - Start/stop DemoNetDriver recording; attach metadata
+
+**Status note (2025-12):** `BrawlNet` is planned but not yet present in [Source/](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source:0:0-0:0) in this repo. Do not reference it from other modules until it is created (Milestone 6+).
 ---
 ## 9) Module: BrawlUI
 Purpose: MVVM viewmodels + widget binding. No gameplay rules.
