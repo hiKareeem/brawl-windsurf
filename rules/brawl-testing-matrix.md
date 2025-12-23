@@ -48,6 +48,10 @@ Goal: keep combat/economy stable as content grows (58+ units).
 - Traits:
   - ActiveCounts (field) vs PotentialCounts (field+bench) computed correctly
   - UI format can show `Active(Potential)/Threshold`
+- Traits (LVL_Sandbox automation):
+  - `Brawl.Economy.Traits.BenchVsField.LVL_Sandbox`
+  - `Brawl.Economy.Traits.RecomputeOnRosterMutation.LVL_Sandbox`
+  - `Brawl.Economy.Traits.RecomputeOnPlacementCommit.LVL_Sandbox`
 
 ### Match / RPC validation
 - EquipAbilities RPC ([ServerRequestEquipUnitAbilities](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:37:1-37:134)):

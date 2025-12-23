@@ -25,6 +25,12 @@ Purpose: phase/round state machine, creep rounds, orchestration, match event log
   - Planning/Combat/Rewards/Shop round types
   - Reads round definitions from `UBrawlRoundSetData`
 
+**Combat driver (centralized combat updates)**
+- [Public/Components/BrawlCombatManagerComponent.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Components/BrawlCombatManagerComponent.h:0:0-0:0) -> `UBrawlCombatManagerComponent : UActorComponent`
+  - Owned by [ABrawlGameState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:14:0-19:1)
+  - Server-only tick; enabled only while `PhaseTag == Phase.Combat` (via [ABrawlGameState::SetPhaseTag](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlGameState.h:33:4-33:46))
+  - Enumerates combat units via [ABrawlBoardActor::GetRegisteredUnitIds(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlGrid/Public/Actors/BrawlBoardActor.h:93:1-93:75) and processes them deterministically (sort by `FBrawlUnitInstanceId.Value`)
+
 **Round data**
 - `Public/Data/BrawlRoundData.h`
 - `Public/Data/BrawlRoundSetData.h`

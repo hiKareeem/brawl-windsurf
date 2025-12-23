@@ -53,7 +53,23 @@ Each ability references a TargetingPolicy that defines:
 
 ---
 
-## 4) Projectiles
+## 4) Central combat driver integration (locked target + event emission)
+When combat casting is driven centrally (not per-unit tick), the server may resolve a target *before* activating the ability.
+
+- Central driver: [UBrawlCombatManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlCombatManagerComponent.cpp:18:0-21:1) (BrawlMatch)
+  - Resolves `UBrawlTargetingPolicy`
+  - Publishes `Combat.TargetChosen` and `Combat.AbilityCast` via `UBrawlGA_Base`
+
+- Abilities must avoid double-emitting these events.
+  - If the avatar implements `IBrawlCombatTargetProviderInterface` ([GetLockedTarget](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:43:4-43:64), [GetLockedAbilityId](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:44:4-44:54)), an ability may:
+    - Use the locked target when `LockedAbilityId == AbilityId`
+    - Skip re-publishing `Combat.TargetChosen` / `Combat.AbilityCast` (the driver already emitted them)
+
+- If no locked target is provided (or it doesn’t match), the ability resolves target normally and emits events normally.
+
+---
+
+## 5) Projectiles
 If travel time matters:
 - Use a projectile actor policy; **impact applies effects/damage** (server-authoritative).
 
@@ -68,7 +84,7 @@ If travel time matters:
 
 ---
 
-## 5) On-hit procs, auras, persistent effects
+## 6) On-hit procs, auras, persistent effects
 Preferred patterns:
 - On-hit: apply a GE that triggers via tags/events, or use a standardized on-hit ability hook.
 - Aura: periodic GE application driven by a standardized aura component/ability pattern.
@@ -76,14 +92,14 @@ Preferred patterns:
 
 ---
 
-## 6) Conditional trait/item interactions
+## 7) Conditional trait/item interactions
 Complex conditions must be implemented using a consistent mechanism (pick one and stick to it):
 - Tag-driven + standardized listeners (e.g., “FirstCast”, “After10Seconds”, “Frontline>=2 Tanks”)
 - Avoid hardcoding trait names in ability code; use tag queries.
 
 ---
 
-## 7) GameplayCues
+## 8) GameplayCues
 - Cues are presentation only.
 - No gameplay logic in cues.
 - Abilities trigger cues through standardized cue tags.
