@@ -79,6 +79,28 @@ Required fields:
 - Display name/description (localizable)
 - Thresholds list:
   - threshold N -> list of effects
+
+### Trait threshold evaluation + effect targeting (v1)
+- **Threshold evaluation:** “highest tier wins” (non-cumulative).
+  - Determine the active tier as the largest `Threshold` where `ActiveCount >= Threshold`.
+  - Only the active tier’s effects apply.
+  - When the active tier changes, remove the previously-applied tier effects before applying the new tier.
+
+- **Effect targeting policy (per-threshold):**
+  - `ContributorsOnly`: apply to the units that contribute the trait (owned + **field** + have the trait tag).
+  - `AllOwnedFieldUnits`: apply to all owned **field** units, regardless of whether they contribute the trait.
+
+- **Effect representation + reversibility:**
+  - GameplayEffects must be tracked by handle so they can be removed cleanly.
+  - Ability grants must be tracked by spec handle so they can be removed cleanly.
+  - Tag adds/removes must be reversible and safe:
+    - TagAdds are applied as loose gameplay tags.
+    - TagRemoves should not blindly remove tags from other systems; only remove tags that the trait system previously added.
+
+- **Counts contract remains unchanged:**
+  - `ActiveCounts` (field-only) drive effects.
+  - `PotentialCounts` (bench+field) are UI-only.
+
 Effects may include:
 - Apply GameplayEffect(s) to team/units
 - Grant ability(s)

@@ -67,6 +67,17 @@ Purpose: MVVM viewmodels + widget binding. No gameplay rules.
 - `Public/UI/BrawlVM_DPSMeter.h`
 
 Widgets live in Content; they bind to these VMs.
+
+### Implementation notes (2025-12)
+- BrawlUI is now implemented in [Source/BrawlUI/](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUI:0:0-0:0) and registered in [Brawl.uproject](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Brawl.uproject:0:0-0:0).
+- MVVM implementation uses the UE **ModelViewViewModel** plugin (`UMVVMViewModelBase`).
+- Dev/debug overlay spawning is owned by BrawlUI (no gameplay-module coupling):
+  - `UBrawlUIDebugOverlaySubsystem : ULocalPlayerSubsystem`
+  - The subsystem owns overlay create/toggle and exposes ViewModels for widget binding.
+
+Guardrails:
+- BrawlUI remains **read-only** and contains **no gameplay rules**.
+- Gameplay modules must not depend on BrawlUI (no includes / no build.cs deps).
 ---
 ## 10) MVP creation order (do not skip)
 1) **BrawlCore:** tags + IDs + logging + EventBus + event structs

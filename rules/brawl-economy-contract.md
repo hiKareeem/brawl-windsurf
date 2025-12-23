@@ -37,6 +37,11 @@ globs:
   - ActiveCounts = field only (effects applied).
   - Active vs Potential must be computed from placement (canonical occupancy), not inferred from roster.
 
+- Trait thresholds + effects (v1):
+  - Threshold evaluation is **highest tier wins** (non-cumulative).
+  - Effects apply from ActiveCounts only (field-only).
+  - Effects may target either ContributorsOnly or AllOwnedFieldUnits, per threshold.
+
 - Bench capacity validation:
   - Purchases are requests; the server validates affordability and available bench space.
   - Bench space is determined by scanning the player’s allowed bench row on the canonical board occupancy
