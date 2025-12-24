@@ -123,6 +123,7 @@ Purpose: unit actor + ASC ownership + lifecycle + star combine + loadout state (
     - `FPrimaryAssetId EquippedBasicAbilityId`
     - `FPrimaryAssetId EquippedUltimateAbilityId`
     - Team/owner refs as needed
+    - `FPrimaryAssetId EquippedItemId`
 
 **Definition/init**
 - `Public/Components/BrawlUnitDefinitionComponent.h`
@@ -132,6 +133,13 @@ Purpose: unit actor + ASC ownership + lifecycle + star combine + loadout state (
 - `Public/Components/BrawlUnitLoadoutComponent.h`
   - Server grants/removes GAS abilities based on equipped IDs
   - Enforces “1 basic + 1 ultimate equipped”
+
+**Items**
+- [Public/Data/BrawlItemData.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Data/BrawlItemData.h:0:0-0:0)
+  - `UBrawlItemData : UPrimaryDataAsset`
+- [Public/Components/BrawlUnitItemComponent.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Components/BrawlUnitItemComponent.h:0:0-0:0)
+  - `UBrawlUnitItemComponent : UActorComponent`
+  - Applies/removes item-authored GameplayEffects / ability grants / loose tags to the unit ASC (server authority)
 
 **Star combining**
 - `Public/Components/BrawlStarCombineComponent.h`
@@ -232,6 +240,11 @@ Purpose: TFT-like economy/shop/shared pool + trait counting (active vs potential
     - `ActiveCounts` (field-only, effects applied)
     - `PotentialCounts` (field+bench, UI only)
   - Recompute triggers on roster/placement changes
+
+**Items**
+- [Public/Components/BrawlItemInventoryComponent.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlEconomy/Public/Components/BrawlItemInventoryComponent.h:0:0-0:0)
+  - [UBrawlItemInventoryComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlEconomy/Private/Components/BrawlItemInventoryComponent.cpp:35:0-40:1)
+  - Owner-only replicated inventory list of `{ ItemId, Count }`
 
 **Data**
 - `Public/Data/BrawlEconomyTuningData.h`

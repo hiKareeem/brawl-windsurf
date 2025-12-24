@@ -109,6 +109,25 @@ Commit:
 - Replicate equipped IDs
 - Server grants/removes GAS abilities accordingly
 
+## 4b) Item equip requests
+### EquipItem(UnitId, ItemId)
+Validate:
+- Phase allows (default: `Phase.Planning` and `Phase.ItemShop`; reject `Phase.Combat` / `Phase.Rewards`)
+- Unit exists and is owned by the requesting player
+- `ItemId` is either invalid (meaning unequip) OR is a valid Item PrimaryAssetId
+- If equipping:
+  - Player inventory contains the item (count >= 1)
+  - AssetManager can resolve/load the ItemData for the id (reject unknown ids)
+Commit:
+- Consume item from inventory
+- Equip item on unit (replicate equipped id)
+- Apply item-authored effects to the unit’s ASC (track handles so effects are reversible)
+- If swapping, return the previously equipped item to inventory
+Rollback:
+- If any step after consuming fails, refund inventory (do not lose items on partial failure)
+Rate limit:
+- Apply basic rate limiting to EquipItem requests (anti-spam)
+
 ---
 
 ## 5) Spectator permissions

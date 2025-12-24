@@ -93,7 +93,7 @@ globs:
   - treat as planning for placement (bench<->field allowed; swap-on-drop rules apply)
 - ItemShop phase semantics:
   - `Phase.ItemShop` represents an **ItemShop** round (carousel-like), not the UnitShop.
-  - Treat `Phase.ItemShop` as **planning-like** for board interactions (bench/field moves + swaps) and **ability equip**.
+  - Treat `Phase.ItemShop` as **planning-like** for board interactions (bench/field moves + swaps), **ability equip**, and **item equip**.
 - Combat phase:
   - field units are non-interactive (no reposition)
   - bench units may be moved between bench tiles only, and only within the player’s allowed bench row (host row for host player, guest row for guest player)

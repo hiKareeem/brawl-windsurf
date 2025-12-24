@@ -41,7 +41,16 @@ Purpose: phase/round state machine, creep rounds, orchestration, match event log
 **Event log**
 - [Public/Subsystems/BrawlMatchEventLogSubsystem.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Subsystems/BrawlMatchEventLogSubsystem.h:0:0-0:0)
   - Subscribes to EventBus; buffers recent events in-memory (base `FBrawlEventBase` fields + event `UScriptStruct` + deep-copied payload bytes) for debug/testing. Persistence/export is deferred.
+
+- [Public/Game/BrawlPlayerState.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerState.h:0:0-0:0) -> `ABrawlPlayerState : APlayerState`
+  - Owns Economy/Shop/Traits/Progression components, roster refs, and ItemInventory
+
+- [Public/Game/BrawlPlayerController.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:0:0-0:0) -> `ABrawlPlayerController : APlayerController`
+  - Sends server requests (placement, shop, equip)
+  - Equip item RPC: [ServerRequestEquipUnitItem(FBrawlUnitInstanceId UnitId, FPrimaryAssetId ItemId)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:42:1-42:86)
+
 ---
+
 ## 8) Module: BrawlNet
 Purpose: replication scaling + replay recording hooks.
 
@@ -51,8 +60,6 @@ Purpose: replication scaling + replay recording hooks.
 - `Public/Subsystems/BrawlReplaySubsystem.h`
   - `UBrawlReplaySubsystem : UGameInstanceSubsystem`
   - Start/stop DemoNetDriver recording; attach metadata
-
-**Status note (2025-12):** `BrawlNet` is planned but not yet present in [Source/](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source:0:0-0:0) in this repo. Do not reference it from other modules until it is created (Milestone 6+).
 ---
 ## 9) Module: BrawlUI
 Purpose: MVVM viewmodels + widget binding. No gameplay rules.

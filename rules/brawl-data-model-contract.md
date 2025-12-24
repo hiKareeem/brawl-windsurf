@@ -72,6 +72,8 @@ Required fields:
 - GameplayEffects to apply (to unit and/or team)
 - Abilities to grant (optional)
 - Tags to add (optional)
+Deferred (v1):
+- Unique item flag (enforcement is deferred until multi-slot or team-wide uniqueness rules exist)
 
 ### TraitData (UBrawlTraitData)
 Required fields:
