@@ -110,10 +110,14 @@ If Economy is not implemented yet, it is acceptable to complete placement-only r
 - Add automation test(s): transfer → combat → return invariants.
 
 ### v2.1 Combat resolution + rewards semantics
-- Decide and implement combat end condition (timer-only vs early-out on team death).
-- Decide winner/tie rules and how Rewards phase consumes them.
-- Keep placement locked in Rewards.
-- Decide whether shop actions are allowed in Rewards (if allowed, purchased units must spawn onto the player’s current active board bench row).
+- Combat can end early only when ALL arena fights are complete (no premature phase advance while any fight is ongoing).
+- When an arena fight ends, surviving units get `State.Victory` to disable AI/targeting and allow victory presentation.
+- Tie rules:
+  - Sudden death overtime (TFT-like, designer-defined; e.g., limited overtime with escalating pressure).
+  - Backup deterministic tiebreak (if needed): more units alive → more total unit health → stable UnitId/metric.
+- Rewards phase:
+  - placement locked
+  - shop actions not allowed (teardown + rewards distribution + next-round setup)
 
 ### v2.2 Economy completion
 - Bench-full purchase prevention (server authoritative; hard stop).
@@ -156,6 +160,8 @@ If Economy is not implemented yet, it is acceptable to complete placement-only r
 ### v3.3 Spectator/scouting UX
 - Spectator camera + board switching.
 - Decide economy visibility for spectator/scouting.
+- Each board has a host camera and a 180°-rotated guest camera for scouting/combat viewing.
+- Spectators see everything (including shop offers) and the scoreboard can show: level/xp/gold, roster, items, trait synergies.
 
 ---
 

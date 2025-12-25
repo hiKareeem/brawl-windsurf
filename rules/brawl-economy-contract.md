@@ -54,3 +54,26 @@ globs:
   - On StarLevel increase, the server reinitializes pools:
     - `CurrentHealth = MaxHealth`
     - `CurrentEnergy = 0`
+
+- Phase legality (economy actions):
+  - Shop actions (purchase/reroll/sell/buy XP) are allowed only during `Phase.Planning` and `Phase.ItemShop` unless a specific round explicitly overrides this.
+  - Shop actions are NOT allowed during `Phase.Rewards`.
+
+- Selling refund policy (v2):
+  - Refund is based on unit cost per copy (from UnitData) and StarLevel:
+    - 1-star: `Refund = 1 * Cost`
+    - 2-star: `Refund = 3 * Cost - 1`
+    - 3-star: `Refund = 9 * Cost - 2`
+  - This should be designer-editable via tuning (e.g., per-star penalty, or a refund curve/table).
+
+- Selling shared-pool return (v2):
+  - Selling returns copies to the shared pool based on StarLevel:
+    - 1-star returns 1 copy
+    - 2-star returns 3 copies
+    - 3-star returns 9 copies
+
+- Overflow enforcement timing (v2):
+  - Overflow is enforced at end of Planning/ItemShop only.
+  - If field unit count exceeds the player’s allowed team size cap:
+    - Move the last placed field unit to bench if there is a free bench slot.
+    - Otherwise destroy it and apply the same refund + shared-pool return policy as a sell.

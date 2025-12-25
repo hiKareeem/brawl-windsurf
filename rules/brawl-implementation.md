@@ -139,14 +139,37 @@ globs:
   - bench units may be moved between bench tiles only, and only within the player’s allowed bench row (host row for host player, guest row for guest player)
 - Rewards phase:
   - placement is locked (no player-initiated moves)
-  - Non-arena boards remain in the world but are empty/non-interactive while their owner is fighting elsewhere; newly purchased units spawn on the player’s bench on the current arena board (guest bench if they are the guest).
-  - Post-combat: transfer guest units back to their original board; dead units are unpooled/undestroyed and damaged units are reinitialized as needed (Match-owned orchestration).
-- Coordinate mapping for transfer (guest-side mirroring):
-  - Guest-side placement is a 180° rotation relative to the host. Example: a unit at “view (0,0)” on the guest bench corresponds to canonical bench coord `(X=BenchWidth-1, Y=1)` (e.g., `8,1` when BenchWidth is 9).
-- Overflow:
-  - shop purchase disallowed if bench full
-  - overflow from other sources spawns at field (0,0) using canonical coords
-  - if over capacity at end of planning: destroy excess unit(s) and refund cost; they must not participate in combat
+  - shop actions are not allowed (Rewards is teardown + rewards distribution + planning setup)
+  - Post-combat: transfer guest units back to their original home board.
+    - Dead units are not destroyed; they are reset/respawned on the home board (full health/energy, etc.) as part of post-combat reinitialization.
+
+- Arena transfer (guest-side mirroring) — canonical coord mapping (v2)
+  - Guest home-board coords are expressed on the host half (field `Y=0..FieldHalfHeight-1`, bench row `Y=0`).
+  - When transferring a guest player’s units onto the arena host board, map guest coords into the host board’s guest half via a 180° rotation:
+    - Field (`bIsBench=false`):
+      - `X' = FieldWidth - 1 - X`
+      - `Y' = (2*FieldHalfHeight - 1) - Y`
+      - Example (FieldWidth=9, FieldHalfHeight=4): `(0,0) -> (8,7)`
+    - Bench (`bIsBench=true`):
+      - `X' = BenchWidth - 1 - X`
+      - `Y' = 1` (guest bench row)
+  - After transfer, the guest player’s home board occupancy is cleared (avoid duplicate authoritative occupancy).
+  - Host/guest board designation is server-only and deterministic (seeded):
+    - Per pairing: seed with `(MatchId, RoundIndex, min(PlayerIdA, PlayerIdB), max(PlayerIdA, PlayerIdB))`
+    - Use the result as a deterministic “coin flip” to decide which player hosts the arena so each player fights on their own board ~50% of the time.
+    - (Recommended) Log pairing + host selection for audit/debug (EventLog).
+
+- Combat phase:
+  - Combat can end early only when one side has no alive field units on **all arena boards**.
+  - Do not advance phase while any arena fight is still ongoing.
+  - When an arena fight ends early (one side eliminated), apply `State.Victory` to surviving units on the winning side to disable AI/targeting and allow victory presentation while other arenas finish.
+
+- Overflow (team-size cap) enforcement:
+  - Enforced at end of Planning/ItemShop only.
+  - If the player has more field units than allowed:
+    - Move the most-recently-placed field unit to the bench if there is a free bench slot.
+    - Otherwise destroy it, refund, and return its shared-pool copies (see economy contract).
+
 - Tiles use an interaction trace channel for coord picking.
 - Units ignore that channel by design.
 - Unit click/hover uses a different channel and resolves to `UnitId -> Occupancy` (not actor transform).

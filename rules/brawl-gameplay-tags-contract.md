@@ -27,6 +27,7 @@ GameplayTags are the primary rules language. Prefer tags + tag queries over enum
 ### Unit states
 - `State.Alive`
 - `State.Dead`
+- `State.Victory` (applied to winning team units after their arena fight ends; disables AI/targeting and enables victory presentation)
 
 ### Cooldowns (ability activation gating)
 - `State.Cooldown.Basic`

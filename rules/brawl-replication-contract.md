@@ -59,6 +59,13 @@ Replicate (minimum):
 Never client-authored:
 - gold changes, purchases, rolls, pool counts
 
+- Spectator visibility policy (v2/v3 intent):
+  - Spectators should see everything, including:
+    - all boards/arenas
+    - all PlayerStates economy (gold/xp/level) and shop offers
+    - rosters/traits/items for scoreboard display
+  - Implementation note: this will be enforced via ReplicationGraph relevancy and replication conditions (owner-only today may need widening for spectators).
+
 ---
 
 ## 5) Unit replication
