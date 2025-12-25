@@ -9,10 +9,50 @@ globs:
 ## Non-negotiable goals
 - Server-authoritative simulation for all gameplay-relevant actions.
 - Replays must reproduce the full match exactly as it occurred on the server.
-- No crits and no uncontrolled randomness. If randomness exists (i.e., shop), it must be:
+- No crits and no uncontrolled randomness. If randomness exists (i.e., shop, host v guest designation), it must be:
   - server-only
   - seeded
   - logged for replay/debug
+
+## Match lifecycle + artifacts (v1)
+
+### Authoritative match lifecycle (server-only)
+- We do not rely on `AGameMode` match state. Brawl uses `Phase.*` tags + a replicated match-ended signal.
+- [ABrawlGameMode::BeginPlay](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Components/BrawlCombatManagerComponent.h:15:1-15:35):
+  - ensures `MatchId` exists ([FBrawlMatchId::NewId()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlCore/Public/Types/BrawlIds.h:15:4-20:5))
+  - subscribes to `ABrawlGameState::OnMatchEnded()`
+  - starts replay recording (if enabled)
+  - starts [UBrawlRoundManagerComponent::StartMatchFlow()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:15:0-34:1)
+- [UBrawlRoundManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:10:0-13:1) is the phase/round driver. When the `RoundSet` is exhausted, it ends the match via [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1).
+- [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1):
+  - sets replicated `bMatchEnded`
+  - broadcasts `OnMatchEnded` (server + clients)
+
+### GameMode split (shipping vs sandbox)
+- `ABrawlGameMode` is shipping-clean:
+  - match lifecycle orchestration
+  - replay start/stop
+  - match event log export
+- `ABrawlSandboxGameMode` is dev-only by convention:
+  - sandbox board spawning / seeding
+  - fake “arena” setup for first two players
+  - debug exec commands: [BrawlDebugAdvancePhase](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:20:1-20:31), [BrawlDebugAdvanceRound](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:23:1-23:31), [BrawlDebugEndMatch](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:26:1-26:27)
+
+### Replay + Event Log artifacts (server-only)
+- Replay:
+  - ReplayName: `Brawl_<MatchId>`
+  - Output: `Saved/Demos/<ReplayName>/...`
+- Event log export (JSONL):
+  - Output directory: `Saved/<MatchEventLogExportSubdir>/`
+  - Filename: `MatchEventLog_<MatchId>_<UTC timestamp>.jsonl`
+  - Controlled by `UBrawlNetSettings` in `Config/DefaultEngine.ini`
+
+### GameLift integration notes (v0, deferred implementation)
+- Preferred early approach: write artifacts locally and rely on GameLift fleet log collection to upload to S3.
+- On match end:
+  - stop replay recording
+  - export JSONL event log
+  - copy artifacts into the directory GameLift is configured to collect as server logs
 
 ### Economy/Shop RNG policy (v0)
 - **Server-only RNG**: Clients never compute or provide RNG outcomes for shop offers. They only send requests (reroll/purchase).
@@ -100,7 +140,7 @@ globs:
 - Rewards phase:
   - placement is locked (no player-initiated moves)
   - Non-arena boards remain in the world but are empty/non-interactive while their owner is fighting elsewhere; newly purchased units spawn on the player’s bench on the current arena board (guest bench if they are the guest).
-  - Post-combat: transfer guest units back to their original board; dead units are unpooled/destroyed and damaged units are reinitialized as needed (Match-owned orchestration).
+  - Post-combat: transfer guest units back to their original board; dead units are unpooled/undestroyed and damaged units are reinitialized as needed (Match-owned orchestration).
 - Coordinate mapping for transfer (guest-side mirroring):
   - Guest-side placement is a 180° rotation relative to the host. Example: a unit at “view (0,0)” on the guest bench corresponds to canonical bench coord `(X=BenchWidth-1, Y=1)` (e.g., `8,1` when BenchWidth is 9).
 - Overflow:
@@ -111,33 +151,3 @@ globs:
 - Units ignore that channel by design.
 - Unit click/hover uses a different channel and resolves to `UnitId -> Occupancy` (not actor transform).
 - This preserves TFT-like UX while keeping the board occupancy authoritative.
-
-### Arena terminology (clarification)
-An “arena board” is not a special actor type. It refers to an existing ABrawlBoardActor that the Match designates as the host board for a combat pairing for the current round.
-Opponent units (and their bench) are transferred onto the host board’s guest half. The guest player’s home board remains spawned but is treated as inactive/empty for that round.
-
-### Star combining / StarLevel changes (v1 rule)
-- Unit StarLevel upgrades (combines) must never resolve for a unit actively IN combat. It is in combat when it is Phase.Combat and the unit is on the field NOT on the bench. 
-- Units on the bench can still combine at any point.
-- Pending combines involving a unit in combat resolve at the start of the next `Phase.Planning` (TFT-like).
-- On StarLevel increase, the server reinitializes pools:
-  - `CurrentHealth = MaxHealth`
-  - `CurrentEnergy = 0`
-
-### Star combining / StarLevel upgrades — implementation notes (v1)
-
-- [ABrawlUnitCharacter::SetStarLevel(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:56:4-56:41) remains a low-level **server-only** setter used by initialization and tests.
-  - Do **not** embed phase/placement guard logic inside [SetStarLevel(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:56:4-56:41).
-
-- The StarLevel combine guard/deferral must be enforced in the **combine-resolution path** (e.g., [UBrawlStarCombineComponent::RequestStarLevelUpgrade(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Components/BrawlStarCombineComponent.h:16:1-16:83)):
-  - If `PhaseTag == Phase.Combat` AND unit is on the **field** → do not apply immediately; defer.
-  - If unit is on the **bench** → apply immediately (even during `Phase.Combat`).
-
-- Bench vs field is derived from canonical board placement:
-  - The authoritative board sets a server-authored `FBrawlGridCoordSnapshot` on units via `IBrawlGridOccupantInterface`.
-  - If placement is unknown / snapshot missing, treat as **field** for guard purposes (conservative).
-
-- Pending upgrades resolution:
-  - Store pending upgrades as `UnitId -> DesiredStarLevel` (max desired wins).
-  - Resolve at the start of the next `Phase.Planning`.
-  - Apply in deterministic order sorted by stable `FBrawlUnitInstanceId`.

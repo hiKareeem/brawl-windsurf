@@ -5,11 +5,12 @@ globs:
 ---
 
 ## 7) Module: BrawlMatch
-Purpose: phase/round state machine, creep rounds, orchestration, match event log buffering (persistence/export deferred).
+Purpose: phase/round state machine, creep rounds, orchestration, match event log buffering + JSONL export (persistence/cloud upload deferred).
 
 ### Files / Classes
 **Game framework**
-- `Public/Game/BrawlGameMode.h`  -> `ABrawlGameMode : AGameModeBase` (server rules entry)
+- [Public/Game/BrawlGameMode.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlGameMode.h:0:0-0:0)  -> `ABrawlGameMode : AGameModeBase` (shipping-clean lifecycle + replay/log export)
+- [Public/Game/BrawlSandboxGameMode.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:0:0-0:0) -> `ABrawlSandboxGameMode : ABrawlGameMode` (sandbox spawning/seeding + debug exec commands)
 - `Public/Game/BrawlGameState.h` -> `ABrawlGameState : AGameStateBase`
   - Replicates: round index, phase tag, time remaining
 - `Public/Game/BrawlPlayerState.h` -> `ABrawlPlayerState : APlayerState`
@@ -72,6 +73,7 @@ Purpose: MVVM viewmodels + widget binding. No gameplay rules.
 - `Public/UI/BrawlVM_RoundTimer.h`
 - `Public/UI/BrawlVM_DamageRecap.h`
 - `Public/UI/BrawlVM_DPSMeter.h`
+- [Public/UI/BrawlVM_PlayerEconomy.h](cci:7://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUI/Public/UI/BrawlVM_PlayerEconomy.h:0:0-0:0)
 
 Widgets live in Content; they bind to these VMs.
 

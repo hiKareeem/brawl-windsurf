@@ -175,3 +175,17 @@ Event payloads are stored in TArray<uint8>. This relies on engine allocator alig
 ### 5.6 Sequence number semantics
  - SequenceNumber is monotonic within a world lifetime.
  - Clearing the buffer does not reset the monotonic sequence generator (i.e., new events continue with increasing SequenceNumber).
+
+## 6) Export artifact (v1) — JSONL on match end
+
+### Trigger + output path
+- Export is server-only and occurs on match end ([ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1) -> `ABrawlGameMode` hook).
+- Output path:
+  - `Saved/<MatchEventLogExportSubdir>/MatchEventLog_<MatchId>_<UTC timestamp>.jsonl`
+  - `MatchEventLogExportSubdir` comes from `UBrawlNetSettings` (`DefaultEngine.ini`), default `BrawlEventLogs`.
+
+### JSONL line format
+- One JSON object per published event, written in publish order (oldest → newest).
+- Each line contains all reflected USTRUCT fields of the specific event payload, plus:
+  - `SequenceNumber` (string; monotonic within the world lifetime)
+  - `EventStructName` (string; published `UScriptStruct` name)
