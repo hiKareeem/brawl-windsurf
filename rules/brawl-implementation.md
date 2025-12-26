@@ -33,10 +33,10 @@ globs:
   - match lifecycle orchestration
   - replay start/stop
   - match event log export
-- `ABrawlSandboxGameMode` is dev-only by convention:
+- [ABrawlSandboxGameMode](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlSandboxGameMode.cpp:15:0-19:1) is dev-only by convention:
   - sandbox board spawning / seeding
-  - fake “arena” setup for first two players
   - debug exec commands: [BrawlDebugAdvancePhase](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:20:1-20:31), [BrawlDebugAdvanceRound](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:23:1-23:31), [BrawlDebugEndMatch](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:26:1-26:27)
+  - Arena transfer is match-owned (RoundManager/GameState) and is not special-cased by sandbox code.
 
 ### Replay + Event Log artifacts (server-only)
 - Replay:
@@ -154,10 +154,15 @@ globs:
       - `X' = BenchWidth - 1 - X`
       - `Y' = 1` (guest bench row)
   - After transfer, the guest player’s home board occupancy is cleared (avoid duplicate authoritative occupancy).
-  - Host/guest board designation is server-only and deterministic (seeded):
-    - Per pairing: seed with `(MatchId, RoundIndex, min(PlayerIdA, PlayerIdB), max(PlayerIdA, PlayerIdB))`
-    - Use the result as a deterministic “coin flip” to decide which player hosts the arena so each player fights on their own board ~50% of the time.
-    - (Recommended) Log pairing + host selection for audit/debug (EventLog).
+- Host/guest board designation is server-only and deterministic (seeded) (v0/1v1):
+  - Collect 2 valid [ABrawlPlayerState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:43:0-52:1) entries and sort by `PlayerId`.
+  - Compute a deterministic “coin flip” using `(MatchId, RoundIndex)`.
+  - Host is chosen from the sorted list based on the coin flip; the host player’s home `BoardActor` is used as the arena board for that round.
+  - During `Phase.Combat`, both players’ `ActiveBoardActor` are set to the arena board. After combat, restore each player’s `ActiveBoardActor` to their home `BoardActor`, and clear `ArenaBoard.GuestPlayerId`.
+
+- Arena transfer return semantics (bench shuffles persist):
+  - Field units return to their original home-board coord captured at transfer time.
+  - Bench units return based on their final arena bench coord (inverse-mirrored back to home bench row `Y=0`) so bench-only movement during combat is preserved.
 
 - Combat phase:
   - Combat can end early only when one side has no alive field units on **all arena boards**.
