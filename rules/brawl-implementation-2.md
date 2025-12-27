@@ -4,6 +4,16 @@ description:
 globs: 
 ---
 
+### GameMode split (shipping vs sandbox)
+- `ABrawlGameMode` is shipping-clean:
+  - match lifecycle orchestration
+  - replay start/stop
+  - match event log export
+- [ABrawlSandboxGameMode](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlSandboxGameMode.cpp:15:0-19:1) is dev-only by convention:
+  - sandbox board spawning / seeding
+  - debug exec commands: [BrawlDebugAdvancePhase](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:20:1-20:31), [BrawlDebugAdvanceRound](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:23:1-23:31), [BrawlDebugEndMatch](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:26:1-26:27)
+  - Arena transfer is match-owned (RoundManager/GameState) and is not special-cased by sandbox code.
+
 - Arena transfer (guest-side mirroring) — canonical coord mapping (v2)
   - Guest home-board coords are expressed on the host half (field `Y=0..FieldHalfHeight-1`, bench row `Y=0`).
   - When transferring a guest player’s units onto the arena host board, map guest coords into the host board’s guest half via a 180° rotation:
@@ -35,6 +45,29 @@ globs:
   - If the player has more field units than allowed:
     - Move the most-recently-placed field unit to the bench if there is a free bench slot.
     - Otherwise destroy it, refund, and return its shared-pool copies (see economy contract).
+
+## Overflow + bench-full purchase prevention (v2)
+
+### Bench-full purchase prevention (hard stop)
+- Shop purchases must require an available bench slot in the player’s allowed bench row.
+- If the bench is full, the server rejects the purchase:
+  - gold is not spent
+  - the offer is not consumed
+  - no unit is spawned
+- This is enforced server-side; clients may only send purchase requests.
+
+### Overflow grants (forced unit grants when bench is full)
+Overflow applies to server-forced unit grants (e.g., carousel/itemshop-style grants) when the bench is full.
+
+Grant behavior (server):
+1) If the granted unit can immediately star-combine, resolve the combine and do not place/track overflow.
+2) Else, if there is any free bench slot, place the unit on the bench.
+3) Else (bench full), place the unit on the first free field tile found by scanning field coords in canonical order (lowest coord first).
+   - Emit `Grid.OverflowSpawned` after placement.
+
+Overflow resolution:
+- During Planning, when bench space opens, move overflow units from field to bench in FIFO order.
+- On Planning → Combat, enforce team-size cap and resolve overflow (see Team Size Cap / Overflow Enforcement).
 
 - Tiles use an interaction trace channel for coord picking.
 - Units ignore that channel by design.

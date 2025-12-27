@@ -76,13 +76,21 @@ It is NOT required for replay playback, but must be stable and comprehensive.
   - sourceId, targetId, abilityId, amount, damageClassTag, elementTag, finalTagsApplied
   - damageClassTag is a `DamageClass.*` tag (Physical/Special/Mixed/True)
   - elementTag is the ability’s `Element.*` tag (used for effectiveness/STAB when applicable)
-- `Combat.UnitDied`
-  - unitId, killerId (optional), time
+
+### Combat.UnitDied (field additions)
+- `KillingDamageAppliedSequenceNumber` (int64)
+  - Optional. If known, this is the EventLog `SequenceNumber` of the `Combat.DamageApplied` event that caused this death.
+  - If unknown/unavailable, set to `0`.
+
+#### Clarification: PlayerId semantics for combat events
+For `Combat.UnitDied`, define whether `PlayerId` refers to:
+- the dead unit’s owning player (victim)
 
 ### Combat.ArenaResolved
-Emitted when the server resolves an arena fight for the round.
-
-Fields:
+- `HostFinalEliminationDamageSequenceNumber` (int64)
+- `GuestFinalEliminationDamageSequenceNumber` (int64)
+  - Sequence numbers of the killing `Combat.DamageApplied` events for each side’s final elimination.
+  - `0` if the ordering could not be determined.
 - `HostPlayerId` (int)
 - `GuestPlayerId` (int)
 - `WinningPlayerId` (int)

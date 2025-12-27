@@ -14,99 +14,6 @@ globs:
   - seeded
   - logged for replay/debug
 
-## Match lifecycle + artifacts (v1)
-
-### Authoritative match lifecycle (server-only)
-- We do not rely on `AGameMode` match state. Brawl uses `Phase.*` tags + a replicated match-ended signal.
-- [ABrawlGameMode::BeginPlay](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Components/BrawlCombatManagerComponent.h:15:1-15:35):
-  - ensures `MatchId` exists ([FBrawlMatchId::NewId()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlCore/Public/Types/BrawlIds.h:15:4-20:5))
-  - subscribes to `ABrawlGameState::OnMatchEnded()`
-  - starts replay recording (if enabled)
-  - starts [UBrawlRoundManagerComponent::StartMatchFlow()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:15:0-34:1)
-- [UBrawlRoundManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:10:0-13:1) is the phase/round driver. When the `RoundSet` is exhausted, it ends the match via [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1).
-- [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1):
-  - sets replicated `bMatchEnded`
-  - broadcasts `OnMatchEnded` (server + clients)
-
-## Combat resolution + internal Rewards phase (v2)
-
-### Combat resolution
-- Combat resolution is performed server-side.
-- Combat may end early only when all active arena fights have resolved (no phase advance while any arena is unresolved).
-- Each arena resolution selects a winner using:
-  1) Elimination: one side has 0 alive field units
-  2) (If forced at combat end) UnitCount tiebreaker
-  3) (If still tied) TotalHealth tiebreaker
-  4) (If still tied) DeterministicPlayerId tiebreaker (lowest PlayerId wins)
-
-### Rewards phase semantics (internal)
-- Rewards exists as an internal phase used for deterministic reward application and match bookkeeping.
-- Rewards has a duration of `0` seconds (immediate transition to Planning after applying rewards).
-- While in Rewards:
-  - shop actions are forbidden
-  - placement is locked
-- Rewards application includes:
-  - winner/loser gold from round data (`WinGold`, `LossGold`)
-  - player life damage computed as `BasePlayerDamage + SurvivingUnits` (survivors = alive field units for the winning side)
-  - streak bookkeeping (win/loss streak updates)
-
-### GameMode split (shipping vs sandbox)
-- `ABrawlGameMode` is shipping-clean:
-  - match lifecycle orchestration
-  - replay start/stop
-  - match event log export
-- [ABrawlSandboxGameMode](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlSandboxGameMode.cpp:15:0-19:1) is dev-only by convention:
-  - sandbox board spawning / seeding
-  - debug exec commands: [BrawlDebugAdvancePhase](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:20:1-20:31), [BrawlDebugAdvanceRound](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:23:1-23:31), [BrawlDebugEndMatch](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlSandboxGameMode.h:26:1-26:27)
-  - Arena transfer is match-owned (RoundManager/GameState) and is not special-cased by sandbox code.
-
-### Replay + Event Log artifacts (server-only)
-- Replay:
-  - ReplayName: `Brawl_<MatchId>`
-  - Output: `Saved/Demos/<ReplayName>/...`
-- Event log export (JSONL):
-  - Output directory: `Saved/<MatchEventLogExportSubdir>/`
-  - Filename: `MatchEventLog_<MatchId>_<UTC timestamp>.jsonl`
-  - Controlled by `UBrawlNetSettings` in `Config/DefaultEngine.ini`
-
-### GameLift integration notes (v0, deferred implementation)
-- Preferred early approach: write artifacts locally and rely on GameLift fleet log collection to upload to S3.
-- On match end:
-  - stop replay recording
-  - export JSONL event log
-  - copy artifacts into the directory GameLift is configured to collect as server logs
-
-### Economy/Shop RNG policy (v0)
-- **Server-only RNG**: Clients never compute or provide RNG outcomes for shop offers. They only send requests (reroll/purchase).
-- **Seeded + auditable**: Shop offer rolling uses a deterministic seed derived from:
-  - `MatchId`
-  - `PlayerId`
-  - a monotonic `RollSequenceNumber` (increments per roll/reroll)
-- **Shared pool**: Shop rolls draw from the server-authoritative shared pool (consume/return rules), not from local client lists.
-
-## Overflow + bench-full purchase prevention (v2)
-
-### Bench-full purchase prevention (hard stop)
-- Shop purchases must require an available bench slot in the player’s allowed bench row.
-- If the bench is full, the server rejects the purchase:
-  - gold is not spent
-  - the offer is not consumed
-  - no unit is spawned
-- This is enforced server-side; clients may only send purchase requests.
-
-### Overflow grants (forced unit grants when bench is full)
-Overflow applies to server-forced unit grants (e.g., carousel/itemshop-style grants) when the bench is full.
-
-Grant behavior (server):
-1) If the granted unit can immediately star-combine, resolve the combine and do not place/track overflow.
-2) Else, if there is any free bench slot, place the unit on the bench.
-3) Else (bench full), place the unit on the first free field tile found by scanning field coords in canonical order (lowest coord first).
-   - Emit `Grid.OverflowSpawned` after placement.
-
-Overflow resolution:
-- During Planning, when bench space opens, move overflow units from field to bench in FIFO order.
-- On Planning → Combat, enforce team-size cap and resolve overflow (see Team Size Cap / Overflow Enforcement).
-
 ## Module boundaries and dependency rules
 - **BrawlCore** has no dependencies on other Brawl modules.
 - **BrawlGrid  / BrawlAbilities / BrawlAI** depend only on **BrawlCore** (and UE/GAS).
@@ -151,6 +58,74 @@ Overflow resolution:
   - navmesh-driven during combat
   - grid occupancy is only enforced in planning and at combat start positions
   - if melee can’t reach target: idle (TFT-like)
+
+## Match lifecycle + artifacts (v1)
+
+### Authoritative match lifecycle (server-only)
+- We do not rely on `AGameMode` match state. Brawl uses `Phase.*` tags + a replicated match-ended signal.
+- [ABrawlGameMode::BeginPlay](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Components/BrawlCombatManagerComponent.h:15:1-15:35):
+  - ensures `MatchId` exists ([FBrawlMatchId::NewId()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlCore/Public/Types/BrawlIds.h:15:4-20:5))
+  - subscribes to `ABrawlGameState::OnMatchEnded()`
+  - starts replay recording (if enabled)
+  - starts [UBrawlRoundManagerComponent::StartMatchFlow()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:15:0-34:1)
+- [UBrawlRoundManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:10:0-13:1) is the phase/round driver. When the `RoundSet` is exhausted, it ends the match via [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1).
+- [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1):
+  - sets replicated `bMatchEnded`
+  - broadcasts `OnMatchEnded` (server + clients)
+
+## Combat resolution + internal Rewards phase (v2)
+### Combat end conditions: double elimination tie-break (v1)
+
+- An arena resolves when either team has 0 alive **field** units (bench excluded).
+- If both teams have 0 alive field units:
+  - compare the EventLog `SequenceNumber` of the killing `Combat.DamageApplied` event for each team’s final unit death
+  - team eliminated second (higher sequence) wins
+  - if ordering cannot be determined, fallback winner = host
+
+### Rewards phase semantics (internal)
+- Rewards exists as an internal phase used for deterministic reward application and match bookkeeping.
+- Rewards has a duration of `0` seconds (immediate transition to Planning after applying rewards).
+- While in Rewards:
+  - placement is locked
+- `Phase.Rewards` is teardown-only: no placement and no shop/economy interactions are allowed.
+- Rewards application includes:
+  - winner/loser gold from round data (`WinGold`, `LossGold`)
+  - player life damage computed as `BasePlayerDamage + SurvivingUnits` (survivors = alive field units for the winning side)
+  - streak bookkeeping (win/loss streak updates)
+
+## Combat-phase shop purchases (arena-aware) (v2)
+
+- Allowed phases for shop purchase: `Phase.Planning`, `Phase.ItemShop`, `Phase.Combat`.
+- Forbidden: `Phase.Rewards`.
+- Purchases during `Phase.Combat` always spawn onto the purchaser’s allowed bench row on the *active* board.
+- Allowed bench row is derived server-side from `Board.HostPlayerId/GuestPlayerId` (never client-authored).
+- If the bench row is full: reject purchase (no gold spend, no offer consume, no spawn).
+- If `PhaseTag == Phase.Combat` and `ActiveBoardActor != BoardActor`:
+  - record an `ArenaTransferPlan` move with `FromCoord.bIsBench = true` so return uses the unit’s current arena bench coord and mirrors X back to the home bench row `Y=0`.
+
+### Replay + Event Log artifacts (server-only)
+- Replay:
+  - ReplayName: `Brawl_<MatchId>`
+  - Output: `Saved/Demos/<ReplayName>/...`
+- Event log export (JSONL):
+  - Output directory: `Saved/<MatchEventLogExportSubdir>/`
+  - Filename: `MatchEventLog_<MatchId>_<UTC timestamp>.jsonl`
+  - Controlled by `UBrawlNetSettings` in `Config/DefaultEngine.ini`
+
+### GameLift integration notes (v0, deferred implementation)
+- Preferred early approach: write artifacts locally and rely on GameLift fleet log collection to upload to S3.
+- On match end:
+  - stop replay recording
+  - export JSONL event log
+  - copy artifacts into the directory GameLift is configured to collect as server logs
+
+### Economy/Shop RNG policy (v0)
+- **Server-only RNG**: Clients never compute or provide RNG outcomes for shop offers. They only send requests (reroll/purchase).
+- **Seeded + auditable**: Shop offer rolling uses a deterministic seed derived from:
+  - `MatchId`
+  - `PlayerId`
+  - a monotonic `RollSequenceNumber` (increments per roll/reroll)
+- **Shared pool**: Shop rolls draw from the server-authoritative shared pool (consume/return rules), not from local client lists.
 
 ## Grid and placement rules
 - Board layout is **data-driven** and must not be hard-coded in C++ (no magic numbers for `FieldWidth`, `FieldHalfHeight`, `BenchWidth`). Default tuning is 9x4 per side + 9x1 bench, but designers must be able to change this via DataAssets/Blueprint config for testing (e.g., TFT-like 7x4, 10-space bench, etc.). `BenchRowCount` is currently fixed at 2 (host `Y=0`, guest `Y=1`). Bench width may differ from field width (TFT-style).
