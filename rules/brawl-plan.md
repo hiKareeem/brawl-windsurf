@@ -114,6 +114,7 @@ If Economy is not implemented yet, it is acceptable to complete placement-only r
 - When an arena fight ends, surviving units get `State.Victory` to disable AI/targeting and allow victory presentation.
 - Tie rules:
   - Sudden death overtime (TFT-like, designer-defined; e.g., limited overtime with escalating pressure).
+    - TFT overtime rules (starting point): Duration: A 15-second period. Attack Speed: +300% for all champions. Ability Power: +100% for all champions. Crowd Control (CC): Duration reduced by 66%. Healing & Shielding: Reduced by 66%. 
   - Backup deterministic tiebreak (if needed): more units alive → more total unit health → stable UnitId/metric.
 - Rewards phase:
   - placement locked
@@ -166,8 +167,6 @@ If Economy is not implemented yet, it is acceptable to complete placement-only r
 ---
 
 # 2) Proposed v2 trajectory (expanded, promptable)
-
-This is a “v2 roadmap” you can paste into [brawl-plan.md](cci:7://file:///C:/Users/hi/.codeium/.windsurf/rules/brawl-plan.md:0:0-0:0) and also slice into implementation prompts.
 
 ## v2.0 — Arena transfer + combat correctness (server authoritative)
 - **v2.0.1**: Complete B2 (transfer + return + active board switching)
@@ -222,7 +221,7 @@ v3 is where RepGraph stops being optional.
 - **v3.1.2**: Transfer/return generalized to N pairings simultaneously
 - **v3.1.3**: “Inactive home boards” behavior
     - empty/non-interactive while player is away in combat
-    - purchases during combat/rewards must spawn onto the *current arena board* bench row (per your contract) — decide if v3-only
+    - purchases during combat/rewards must spawn onto the *current arena board* bench row
 
 ## v3.2 — ReplicationGraph (no longer deferred)
 - **v3.2.1**: Wire RepGraph enablement (INI)

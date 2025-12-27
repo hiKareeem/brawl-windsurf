@@ -77,3 +77,27 @@ globs:
   - If field unit count exceeds the player’s allowed team size cap:
     - Move the last placed field unit to bench if there is a free bench slot.
     - Otherwise destroy it and apply the same refund + shared-pool return policy as a sell.
+
+## Overflow + destruction/sell refunds (v2)
+
+### Refund amount (sell or destroy due to overflow/cap enforcement)
+When a unit is destroyed or sold, the gold refund is computed from unit cost and star level:
+
+- `RefundGold = max(0, UnitCost - (StarLevel - 1))`
+
+Examples:
+- 1-star: refunds `UnitCost`
+- 2-star: refunds `UnitCost - 1`
+- 3-star: refunds `UnitCost - 2`
+
+### Shared pool return copies
+When a unit is removed from play (sell or destruction), return copies to the shared pool based on star level:
+
+- 1-star returns `1` copy
+- 2-star returns `3` copies
+- 3-star returns `9` copies
+
+### Equipped item return
+If the unit had an equipped item:
+- return the item to the owning player’s `ItemInventory`
+- clear the unit’s equipped item state

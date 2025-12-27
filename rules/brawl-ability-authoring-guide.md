@@ -105,3 +105,6 @@ Complex conditions must be implemented using a consistent mechanism (pick one an
 - Abilities trigger cues through standardized cue tags.
 
 ---
+
+## 9) GameplayEffects
+- GEs can be authored in Blueprint. If it make sense to do so, request the GE and specify your desired fields and it'll get done. 

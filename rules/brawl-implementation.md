@@ -28,6 +28,28 @@ globs:
   - sets replicated `bMatchEnded`
   - broadcasts `OnMatchEnded` (server + clients)
 
+## Combat resolution + internal Rewards phase (v2)
+
+### Combat resolution
+- Combat resolution is performed server-side.
+- Combat may end early only when all active arena fights have resolved (no phase advance while any arena is unresolved).
+- Each arena resolution selects a winner using:
+  1) Elimination: one side has 0 alive field units
+  2) (If forced at combat end) UnitCount tiebreaker
+  3) (If still tied) TotalHealth tiebreaker
+  4) (If still tied) DeterministicPlayerId tiebreaker (lowest PlayerId wins)
+
+### Rewards phase semantics (internal)
+- Rewards exists as an internal phase used for deterministic reward application and match bookkeeping.
+- Rewards has a duration of `0` seconds (immediate transition to Planning after applying rewards).
+- While in Rewards:
+  - shop actions are forbidden
+  - placement is locked
+- Rewards application includes:
+  - winner/loser gold from round data (`WinGold`, `LossGold`)
+  - player life damage computed as `BasePlayerDamage + SurvivingUnits` (survivors = alive field units for the winning side)
+  - streak bookkeeping (win/loss streak updates)
+
 ### GameMode split (shipping vs sandbox)
 - `ABrawlGameMode` is shipping-clean:
   - match lifecycle orchestration
@@ -61,6 +83,29 @@ globs:
   - `PlayerId`
   - a monotonic `RollSequenceNumber` (increments per roll/reroll)
 - **Shared pool**: Shop rolls draw from the server-authoritative shared pool (consume/return rules), not from local client lists.
+
+## Overflow + bench-full purchase prevention (v2)
+
+### Bench-full purchase prevention (hard stop)
+- Shop purchases must require an available bench slot in the player’s allowed bench row.
+- If the bench is full, the server rejects the purchase:
+  - gold is not spent
+  - the offer is not consumed
+  - no unit is spawned
+- This is enforced server-side; clients may only send purchase requests.
+
+### Overflow grants (forced unit grants when bench is full)
+Overflow applies to server-forced unit grants (e.g., carousel/itemshop-style grants) when the bench is full.
+
+Grant behavior (server):
+1) If the granted unit can immediately star-combine, resolve the combine and do not place/track overflow.
+2) Else, if there is any free bench slot, place the unit on the bench.
+3) Else (bench full), place the unit on the first free field tile found by scanning field coords in canonical order (lowest coord first).
+   - Emit `Grid.OverflowSpawned` after placement.
+
+Overflow resolution:
+- During Planning, when bench space opens, move overflow units from field to bench in FIFO order.
+- On Planning → Combat, enforce team-size cap and resolve overflow (see Team Size Cap / Overflow Enforcement).
 
 ## Module boundaries and dependency rules
 - **BrawlCore** has no dependencies on other Brawl modules.
@@ -142,40 +187,3 @@ globs:
   - shop actions are not allowed (Rewards is teardown + rewards distribution + planning setup)
   - Post-combat: transfer guest units back to their original home board.
     - Dead units are not destroyed; they are reset/respawned on the home board (full health/energy, etc.) as part of post-combat reinitialization.
-
-- Arena transfer (guest-side mirroring) — canonical coord mapping (v2)
-  - Guest home-board coords are expressed on the host half (field `Y=0..FieldHalfHeight-1`, bench row `Y=0`).
-  - When transferring a guest player’s units onto the arena host board, map guest coords into the host board’s guest half via a 180° rotation:
-    - Field (`bIsBench=false`):
-      - `X' = FieldWidth - 1 - X`
-      - `Y' = (2*FieldHalfHeight - 1) - Y`
-      - Example (FieldWidth=9, FieldHalfHeight=4): `(0,0) -> (8,7)`
-    - Bench (`bIsBench=true`):
-      - `X' = BenchWidth - 1 - X`
-      - `Y' = 1` (guest bench row)
-  - After transfer, the guest player’s home board occupancy is cleared (avoid duplicate authoritative occupancy).
-- Host/guest board designation is server-only and deterministic (seeded) (v0/1v1):
-  - Collect 2 valid [ABrawlPlayerState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:43:0-52:1) entries and sort by `PlayerId`.
-  - Compute a deterministic “coin flip” using `(MatchId, RoundIndex)`.
-  - Host is chosen from the sorted list based on the coin flip; the host player’s home `BoardActor` is used as the arena board for that round.
-  - During `Phase.Combat`, both players’ `ActiveBoardActor` are set to the arena board. After combat, restore each player’s `ActiveBoardActor` to their home `BoardActor`, and clear `ArenaBoard.GuestPlayerId`.
-
-- Arena transfer return semantics (bench shuffles persist):
-  - Field units return to their original home-board coord captured at transfer time.
-  - Bench units return based on their final arena bench coord (inverse-mirrored back to home bench row `Y=0`) so bench-only movement during combat is preserved.
-
-- Combat phase:
-  - Combat can end early only when one side has no alive field units on **all arena boards**.
-  - Do not advance phase while any arena fight is still ongoing.
-  - When an arena fight ends early (one side eliminated), apply `State.Victory` to surviving units on the winning side to disable AI/targeting and allow victory presentation while other arenas finish.
-
-- Overflow (team-size cap) enforcement:
-  - Enforced at end of Planning/ItemShop only.
-  - If the player has more field units than allowed:
-    - Move the most-recently-placed field unit to the bench if there is a free bench slot.
-    - Otherwise destroy it, refund, and return its shared-pool copies (see economy contract).
-
-- Tiles use an interaction trace channel for coord picking.
-- Units ignore that channel by design.
-- Unit click/hover uses a different channel and resolves to `UnitId -> Occupancy` (not actor transform).
-- This preserves TFT-like UX while keeping the board occupancy authoritative.

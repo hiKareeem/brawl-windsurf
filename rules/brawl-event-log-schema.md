@@ -79,6 +79,27 @@ It is NOT required for replay playback, but must be stable and comprehensive.
 - `Combat.UnitDied`
   - unitId, killerId (optional), time
 
+### Combat.ArenaResolved
+Emitted when the server resolves an arena fight for the round.
+
+Fields:
+- `HostPlayerId` (int)
+- `GuestPlayerId` (int)
+- `WinningPlayerId` (int)
+- `LosingPlayerId` (int)
+- `Outcome` (string): `HostWin` / `GuestWin`
+- `bWentToOvertime` (bool)
+- `Tiebreaker` (string): `Elimination` / `UnitCount` / `TotalHealth` / `DeterministicPlayerId`
+- `HostAliveUnitCount` (int)
+- `GuestAliveUnitCount` (int)
+- `HostAliveTotalHealth` (float)
+- `GuestAliveTotalHealth` (float)
+
+Emission guarantees:
+- Server-only.
+- Emitted at most once per arena board per combat phase.
+- Used by Rewards application; Rewards must not be applied until all relevant arenas have emitted `Combat.ArenaResolved`.
+
 Field encoding notes (v1):
 - `AbilityId` (all combat events):
   - Prefer [UBrawlAbilityData::GetPrimaryAssetId().PrimaryAssetName](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlAbilities/Public/Data/BrawlAbilityData.h:19:1-19:60) (asset name) when AbilityData is available.

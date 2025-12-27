@@ -4,6 +4,43 @@ description:
 globs: 
 ---
 
+- Arena transfer (guest-side mirroring) — canonical coord mapping (v2)
+  - Guest home-board coords are expressed on the host half (field `Y=0..FieldHalfHeight-1`, bench row `Y=0`).
+  - When transferring a guest player’s units onto the arena host board, map guest coords into the host board’s guest half via a 180° rotation:
+    - Field (`bIsBench=false`):
+      - `X' = FieldWidth - 1 - X`
+      - `Y' = (2*FieldHalfHeight - 1) - Y`
+      - Example (FieldWidth=9, FieldHalfHeight=4): `(0,0) -> (8,7)`
+    - Bench (`bIsBench=true`):
+      - `X' = BenchWidth - 1 - X`
+      - `Y' = 1` (guest bench row)
+  - After transfer, the guest player’s home board occupancy is cleared (avoid duplicate authoritative occupancy).
+- Host/guest board designation is server-only and deterministic (seeded) (v0/1v1):
+  - Collect 2 valid [ABrawlPlayerState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:43:0-52:1) entries and sort by `PlayerId`.
+  - Compute a deterministic “coin flip” using `(MatchId, RoundIndex)`.
+  - Host is chosen from the sorted list based on the coin flip; the host player’s home `BoardActor` is used as the arena board for that round.
+  - During `Phase.Combat`, both players’ `ActiveBoardActor` are set to the arena board. After combat, restore each player’s `ActiveBoardActor` to their home `BoardActor`, and clear `ArenaBoard.GuestPlayerId`.
+
+- Arena transfer return semantics (bench shuffles persist):
+  - Field units return to their original home-board coord captured at transfer time.
+  - Bench units return based on their final arena bench coord (inverse-mirrored back to home bench row `Y=0`) so bench-only movement during combat is preserved.
+
+- Combat phase:
+  - Combat can end early only when one side has no alive field units on **all arena boards**.
+  - Do not advance phase while any arena fight is still ongoing.
+  - When an arena fight ends early (one side eliminated), apply `State.Victory` to surviving units on the winning side to disable AI/targeting and allow victory presentation while other arenas finish.
+
+- Overflow (team-size cap) enforcement:
+  - Enforced at end of Planning/ItemShop only.
+  - If the player has more field units than allowed:
+    - Move the most-recently-placed field unit to the bench if there is a free bench slot.
+    - Otherwise destroy it, refund, and return its shared-pool copies (see economy contract).
+
+- Tiles use an interaction trace channel for coord picking.
+- Units ignore that channel by design.
+- Unit click/hover uses a different channel and resolves to `UnitId -> Occupancy` (not actor transform).
+- This preserves TFT-like UX while keeping the board occupancy authoritative.
+
 ### Arena terminology (clarification)
 An “arena board” is not a special actor type. It refers to an existing ABrawlBoardActor that the Match designates as the host board for a combat pairing for the current round.
 Opponent units (and their bench) are transferred onto the host board’s guest half. The guest player’s home board remains spawned but is treated as inactive/empty for that round.
@@ -107,3 +144,6 @@ Opponent units (and their bench) are transferred onto the host board’s guest h
     - **Active trait counts** (field-only, currently applied)
     - **Potential trait counts** (field + bench, for UI display)
 - UI should be able to display: `Active(Potential)/Threshold` (example: `2(3)/3`).
+
+## Blueprint assets
+- if an asset should exist as a Blueprint (eg GameplayEffects etc) let me know how you'd like me to set it up and I'll do it. Please do not try to shoehorn things into C++ that are better handled in Blueprint.
