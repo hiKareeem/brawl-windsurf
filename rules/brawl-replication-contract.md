@@ -80,7 +80,17 @@ Implementation note:
 
 ---
 
-## 5) Unit replication
+## 5) Player avatar + camera replication (GASP)
+
+- Player avatar is a replicated Character (cosmetic / presentation-only).
+- Camera state (board vs OTS mode, camera rigs, control rotation behavior) is **client-only** and must not be replicated or used for gameplay authority.
+- Teleports to boards (ActiveBoard changes or scouting) are **server-authored**; clients send requests only.
+- ReplicationGraph should route avatars to the same relevancy buckets as boards so viewers of a board receive the avatars on that board.
+- Contract: `brawl-player-avatar-camera-contract.md`
+
+---
+
+## 6) Unit replication
 ### ABrawlUnitCharacter (replicated actor)
 Replicate:
 - Stable UnitInstanceId (server-assigned)
@@ -107,7 +117,7 @@ GAS:
 
 ---
 
-## 6) Board / grid replication
+## 7) Board / grid replication
 Board/Bench state must support:
 - planning-phase placement visualization
 - spectator viewing
@@ -161,14 +171,14 @@ For sandbox testing, keep spawned boards physically close together so all boards
 
 ---
 
-## 7) Economy / shop replication
+## 8) Economy / shop replication
 - Shop offers are replicated as explicit offer entries (unit type ids + price + any flags).
 - Any offer generation randomness must be server-only (seeded and logged).
 - Clients never “roll locally”.
 
 ---
 
-## 8) RPC contract (requests)
+## 9) RPC contract (requests)
 All request RPCs must be:
 - Reliable only if needed; otherwise use Unreliable + server correction
 - Rate-limited (basic abuse mitigation)
@@ -181,7 +191,7 @@ Required server validations:
 
 ---
 
-## 9) “Do not replicate” list (default)
+## 10) “Do not replicate” list (default)
 - Derived stats that can be recomputed locally for UI (unless needed for spectators)
 - Internal AI decision state (except via Event Log/debug toggles)
 - Per-tick transient values (e.g., “current desire score”)

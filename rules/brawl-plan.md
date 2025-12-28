@@ -84,6 +84,11 @@ globs:
 
 ### v3.3 Spectator/scouting UX (partial until we decide + implement replication policy changes)
 - [~] Board switching + scoreboard; decide spectator economy visibility policy and wire via RepGraph
+- [~] **Player avatar + camera integration (GASP + GameplayCameras):**
+  - Replicated GASP-derived player avatar
+  - Auto-switch to Board camera on `ActiveBoardActor` changes and teleport avatar (TFT-style)
+  - Scoreboard click-to-scout forces Board camera and teleports avatar to scouted board
+  - Spec: `brawl-player-avatar-camera-contract.md`
 
 ### v3.4 Dedicated server readiness + GameLift integration (deferred unless needed)
 - [x] Artifact staging directory for GameLift-collected logs (replay + JSONL)

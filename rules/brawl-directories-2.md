@@ -20,6 +20,10 @@ Purpose: phase/round state machine, creep rounds, orchestration, match event log
   - Placement RPC: [ServerRequestMoveUnit(FBrawlUnitInstanceId UnitId, FBrawlGridCoord ToCoord)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:18:4-18:85)
     - Server derives `PhaseTag` from [ABrawlGameState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:5:0-8:1) (never trust client)
     - Server derives allowed bench row from Board host/guest player ids
+  - Owns local camera mode switching + scouting view behavior (client presentation)
+  - Handles scouting requests (client -> server RPC), server sets scouted selection state
+  - Integrates with replicated player avatar teleport rules (TFT-style)
+  - Spec: `brawl-player-avatar-camera-contract.md`
 
 **Round manager**
 - `Public/Components/BrawlRoundManagerComponent.h`
