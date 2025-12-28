@@ -33,6 +33,7 @@ Goal: competitive integrity + spectate + replay recording (DemoNetDriver) + scal
 - Relevancy rules (baseline):
   - A player is relevant to: their board + opponent board (+ shared UI state like round/phase).
   - Spectator may opt into “see all boards”.
+  - Current implementation uses APlayerState::IsSpectator() in RepGraph
 - Do not rely on “replicate everything to everyone”.
 
 ---
@@ -49,22 +50,33 @@ Server-only:
 - pairing logic (later 8-player)
 - event log file export triggers
 
-### PlayerState (replicated, owner + potentially spectators depending on design)
-Replicate (minimum):
-- Gold, XP, Level, Win/Loss HP (if you have it), streak state
-- Shop offers visible to that player (and to spectators if spectating includes economy visibility)
-- Trait counts: Active + Potential
-- Roster references (unit instance IDs owned by player)
+### PlayerState (replicated to all players; spectators see all)
+Replicate (v3/v4 visibility policy):
+- To **all players** (and spectators):
+  - Player name / identifier
+  - Life
+  - Gold
+  - XP + Level
+  - Win/Loss streak state
+  - **Player-centric roster list** (owned unit instance ids + content ids needed for UI)
+  - **Player-centric bench list / “away-safe” unit list**:
+    - The scoreboard must remain correct even if the unit actors are currently away on a different arena board.
+    - Bench/field membership for a given board is still derived from canonical `ABrawlBoardActor::Occupancy`, but the “what units does this player own” list is player-centric and not tied to actor relevancy.
+
+- To **spectators** (in addition to the above):
+  - All shop offers for all players
+  - Visibility of all boards’ replicated occupancy (grid slot -> UnitInstanceId mapping)
+
+Unit actor visibility policy (RepGraph):
+- At minimum: a connection should receive unit actors for the viewer’s **currently selected/scouted board** (home/active/opponent being scouted).
+- Optional (performance permitting): keep multiple/all concurrent battles relevant so the player can look around and see multiple fights.
+- Do not rely on distance-only replication for this; enforce via ReplicationGraph routing.
 
 Never client-authored:
 - gold changes, purchases, rolls, pool counts
 
-- Spectator visibility policy (v2/v3 intent):
-  - Spectators should see everything, including:
-    - all boards/arenas
-    - all PlayerStates economy (gold/xp/level) and shop offers
-    - rosters/traits/items for scoreboard display
-  - Implementation note: this will be enforced via ReplicationGraph relevancy and replication conditions (owner-only today may need widening for spectators).
+Implementation note:
+- Use ReplicationGraph relevancy/routing to control bandwidth; do not rely on distance-only replication.
 
 ---
 
@@ -101,9 +113,8 @@ Board/Bench state must support:
 - spectator viewing
 - replay playback
 
-Replicate either:
-- (A) per-unit replicated “CurrentGridCoord + IsOnBench”, OR
-- (B) a FastArray of grid slots -> UnitInstanceId mapping
+Replicate:
+- a FastArray of grid slots -> UnitInstanceId mapping
 
 ### Placement Authority: Board Occupancy is Canonical (Option A)
 

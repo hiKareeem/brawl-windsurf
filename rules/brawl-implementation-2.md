@@ -28,7 +28,7 @@ globs:
 - Host/guest board designation is server-only and deterministic (seeded) (v0/1v1):
   - Collect 2 valid [ABrawlPlayerState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:43:0-52:1) entries and sort by `PlayerId`.
   - Compute a deterministic “coin flip” using `(MatchId, RoundIndex)`.
-  - Host is chosen from the sorted list based on the coin flip; the host player’s home `BoardActor` is used as the arena board for that round.
+  - Current behavior: host is the first element in the seeded shuffled pair; arena board = host home board.
   - During `Phase.Combat`, both players’ `ActiveBoardActor` are set to the arena board. After combat, restore each player’s `ActiveBoardActor` to their home `BoardActor`, and clear `ArenaBoard.GuestPlayerId`.
 
 - Arena transfer return semantics (bench shuffles persist):

@@ -1,4 +1,6 @@
-﻿# Deferred — Season Content Gating (Interface Only)
+﻿I have the following prompt for implementation. What things should be clarified/what questions do you have before starting? Is this within the scope of a conversation, or would it help to break it up? Please STOP and ask after reviewing the relevant code but before if you have questions before we begin implementation, otherwise, please proceed:
+
+# Deferred — Season Content Gating (Interface Only)
 
 ## Decision (current)
 - We will **not** introduce seasonal gating yet.

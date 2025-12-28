@@ -42,11 +42,29 @@ Log: `Economy.Purchase`
 
 ### SellUnit(UnitId)
 Validate:
-- Unit exists and owned by player
-- Phase allows selling (usually planning/shop; decide and enforce)
+- UnitId is valid
+- Caller has a valid PlayerState
+- Unit exists and is owned by the requesting player
+- Phase allows selling:
+  - Allowed: `Phase.Planning`, `Phase.ItemShop`, `Phase.Combat` (bench-only)
+  - Rejected: `Phase.Rewards`
+- If `Phase.Combat`:
+  - Require `ActiveBoardActor->TryFindUnitCoord(UnitId, Coord)` succeeds
+  - Require `Coord.bIsBench == true`
+  - Require `Coord.Y == AllowedBenchRow` (derived server-side from board host/guest mapping)
+- Reject if the unit is reserved for star-combining (do not allow selling combine-reserved units)
+
 Commit:
-- Remove unit, return to pool, refund
-Log: `Economy.Sell`
+- Remove unit from board occupancy and roster
+- Destroy the unit actor (server authority)
+- Refund gold per current refund policy
+- Return the appropriate number of shared-pool copies (based on StarLevel)
+- If the unit had an equipped item, return it to the player inventory
+- Trigger any overflow resolution hooks (if applicable)
+
+Log:
+- On success: `Economy.Sell` (exactly once)
+- On rejection: emit **no** `Economy.Sell`
 
 ### RerollShop()
 Validate:
@@ -104,7 +122,13 @@ Validate:
   - Ultimate slot must be kind `Ability.Ultimate`
 - Unit owned by player
 - Ability ids are among the unit’s defined 3 basic/3 ultimate options
-- Phase allows changing loadout (default: `Phase.Planning`; also allow `Phase.ItemShop` if ItemShop is planning-like)
+- Phase allows:
+  - `Phase.Planning`
+  - `Phase.ItemShop`
+  - `Phase.Combat` (bench-only)
+- Phase rejected:
+  - `Phase.Rewards`
+- If `Phase.Combat`: require `TryFindUnitCoord(...)` succeeds and `Coord.bIsBench == true` (else reject)
 Commit:
 - Replicate equipped IDs
 - Server grants/removes GAS abilities accordingly
@@ -112,7 +136,9 @@ Commit:
 ## 4b) Item equip requests
 ### EquipItem(UnitId, ItemId)
 Validate:
-- Phase allows (default: `Phase.Planning` and `Phase.ItemShop`; reject `Phase.Combat` / `Phase.Rewards`)
+- Phase allows: `Phase.Planning`, `Phase.ItemShop`, `Phase.Combat` (bench-only)
+- Phase rejected: `Phase.Rewards`
+- If `Phase.Combat`: require `TryFindUnitCoord(...)` succeeds and `Coord.bIsBench == true` (else reject)
 - Unit exists and is owned by the requesting player
 - `ItemId` is either invalid (meaning unequip) OR is a valid Item PrimaryAssetId
 - If equipping:
@@ -132,6 +158,10 @@ Rate limit:
 
 ## 5) Spectator permissions
 - Spectators cannot send gameplay requests.
-- Spectator visibility rules must be enforced (what economy info they can see).
+- Spectators may observe:
+  - all players’ scoreboard-visible state (name, roster, life, gold, streak, XP/level)
+  - all shop offers (all players)
+  - all board occupancy
+- Visibility is enforced via replication conditions + ReplicationGraph routing (not via gameplay RPCs).
 
 ---
