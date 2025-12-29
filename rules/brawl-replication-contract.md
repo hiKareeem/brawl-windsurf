@@ -198,3 +198,44 @@ Required server validations:
 - Any client-side predicted placement before server confirmation (optional cosmetic only)
 
 ---
+
+## 11) Cosmetics replication (match-visible)
+
+- Cosmetic selections (AvatarSkinId, BoardSkinId) are server-authored and must replicate to relevant viewers for spectate and replay capture.
+- Selection is pre-match only; prefer InitialOnly replication.
+- Emotes are client-requested but server-authorized (validate + rate limit) and must replicate (or multicast) in a replay-captured way.
+- Contract: `brawl-cosmetics-contract.md`
+
+---
+
+## Visibility policy (v3)
+
+### Scoreboard visibility (all players + spectators)
+Replicate to all connections (COND_None):
+- Player name (PlayerState base)
+- Life, win/loss streak
+- Gold
+- XP / Level
+- Roster summary (including bench vs field placement summary)
+
+Rationale:
+- Scoreboard must remain correct even when a player’s units/board actors are not relevant to a given connection.
+
+### Spectator-only visibility
+Spectators additionally receive:
+- All boards’ occupancy (via ReplicationGraph routing)
+- All players’ shop offers (server-gated)
+
+### Shop offer replication gating (server-side)
+- Shop offers are replicated via [UBrawlShopComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlEconomy/Private/Components/BrawlShopComponent.cpp:28:0-33:1) as a subobject.
+- The shop component replication condition is `COND_NetGroup`.
+- The component is registered into net condition groups:
+  - `UE::Net::NetGroupOwner` (owning player)
+  - `Brawl.Spectator` (spectators)
+- A spectator `APlayerController` must be included in net condition group `Brawl.Spectator` for shop replication to occur.
+
+### ReplicationGraph board routing
+- Spectators gather all board nodes (see all boards/occupancy).
+- Non-spectators gather:
+  - their active board
+  - plus an additional scouted board (if any), as exposed via `IBrawlBoardPresenceInterface`.

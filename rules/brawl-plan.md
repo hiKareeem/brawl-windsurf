@@ -141,6 +141,8 @@ globs:
   - economy tuning, shop odds, damage tuning, cooldown tuning
 - [ ] Establish a repeatable “balance workflow” (recorded seeds + test scenarios)
 - [ ] Odd player count rule (TFT-like): one unpaired player fights a deterministic “ghost roster” snapshot of another actively-fighting player (rule definition + tests pending)
+- [ ] Cosmetics contract (pre-0.7): avatar skins (masc/fem), board skin, emotes (0.7); server-authored + replay-captured
+  - Spec: `brawl-cosmetics-contract.md`
 
 ---
 
