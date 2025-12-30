@@ -76,6 +76,27 @@ Required server validations:
 - Placement legality (grid bounds, swap rules, combat lock rules)
 - Ability equip legality (must be one of the unit’s defined options)
 
+### Scouting invalidation: clearing viewers when a target becomes invalid
+
+When a player becomes an invalid scouting target, the server must clear any viewers currently scouting them:
+- Central implementation: [ABrawlGameState::ServerClearScoutingForViewersOfPlayerId(TargetPlayerId)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlGameState.h:72:4-72:71).
+- Triggered from:
+  - [ABrawlPlayerState::SetIsSpectator(true)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:111:0-146:1) (target becomes spectator)
+  - [ABrawlGameState::RemovePlayerState(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlGameState.h:70:4-70:71) (target leaves the match)
+
+### Scouting follows the target's ActiveBoardActor
+
+While viewer is scouting `TargetPlayerId`:
+- If the target's `ActiveBoardActor` changes (home ↔ arena, or arena switches), the viewer's `ScoutedBoardActor` must update to the new `ActiveBoardActor` automatically (server-authored).
+- This keeps scouting stable through arena transfers and prevents stale camera/teleport destinations.
+
+Loop semantics:
+- Iterate `GameState.PlayerArray` deterministically.
+- For each viewer, if `ViewerPS.ScoutedPlayerId == TargetPlayerId`, clear by setting `(ScoutedPlayerId = INDEX_NONE, ScoutedBoardActor = nullptr)`.
+
+Viewer filtering:
+- Viewers who are spectators or eliminated (`Life <= 0`) may be skipped (they should not be issuing gameplay requests).
+
 ---
 
 ## 10) “Do not replicate” list (default)

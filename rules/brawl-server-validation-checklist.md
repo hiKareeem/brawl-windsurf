@@ -178,6 +178,29 @@ Validate (in addition to the basics):
 Rate limit:
 - Controlled by `brawl.Net.RateLimit.ScoutPlayerSeconds` (0 disables)
 
+Lifecycle:
+- If a player becomes an invalid scout target (spectator, eliminated, or removed from `PlayerArray`), the server clears any viewers currently scouting them.
+
 Logging:
 - Rejection logging controlled by `brawl.Net.LogRejectedRequests` (non-zero enables)
 - Log category: `LogBrawlNet`
+
+### Scouting RPC validation (ServerRequestScoutPlayer)
+
+Server authority:
+- Scouting state (`ScoutedPlayerId`, `ScoutedBoardActor`) is server-authored. Clients send requests only.
+
+Requester-side validation (hard stop):
+- If the requesting PlayerState is a spectator (`IsSpectator()`), reject the request and do not mutate scouting state.
+- If the requesting PlayerState is eliminated (`Life <= 0`), reject the request and do not mutate scouting state.
+
+Target-side validation:
+- `TargetPlayerId == INDEX_NONE` is invalid and must be rejected.
+- If `TargetPlayerId == RequesterPlayerId`, treat as "clear scouting" (set `ScoutedPlayerId = INDEX_NONE`, `ScoutedBoardActor = nullptr`).
+- If no matching `TargetPlayerState` exists in `GameState.PlayerArray`, reject.
+- If the target is a spectator or eliminated (`Life <= 0`), reject.
+- Target board resolution uses `TargetPS.ActiveBoardActor` if set, else `TargetPS.BoardActor`. If target has no board, reject.
+
+Rate limiting:
+- Apply rate limiting to accepted scouting requests (`brawl.Net.RateLimit.ScoutPlayerSeconds`).
+- Rate limiting does not override the requester spectator/eliminated hard-stops.

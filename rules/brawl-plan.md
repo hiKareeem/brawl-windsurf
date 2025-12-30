@@ -85,6 +85,20 @@ globs:
   - Server-auth teleport hooks + BP [ForceBoardCameraMode()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:33:1-33:29) triggers (**implemented**)
   - Camera rig/UX polish remains pending (content/BP work)
 
+  - Scouting invalidation auto-clear (target spectator / `Life <= 0` / removal) + automation (**implemented**)
+  - Automation:
+    - `Brawl.Match.Scouting.ServerAuth.StateAndFollowActiveBoard.LVL_Sandbox`
+    - `Brawl.Match.Scouting.ServerAuth.RejectionsAndRateLimit.LVL_Sandbox`
+
+  - Scouting RPC hardening (requester-side):
+  - Reject spectator and eliminated requesters from changing scouting state
+  - Log rejections via existing LogRejectedRequest path
+  - Automation: `Brawl.Match.Scouting.ServerAuth.RejectionsAndRateLimit.LVL_Sandbox` (expanded)
+- Scouting lifecycle improvements:
+  - Made SetScoutedBoardActor idempotent to avoid redundant teleports/delegate spam
+  - Centralized “clear viewers scouting X” logic into ABrawlGameState::ServerClearScoutingForViewersOfPlayerId
+  - Called from SetIsSpectator(true) and RemovePlayerState
+
 ### v3.4 Dedicated server readiness + GameLift integration (deferred unless needed)
 - [x] Artifact staging directory for GameLift-collected logs (replay + JSONL)
 - [x] RPC validation/rate limiting sweep

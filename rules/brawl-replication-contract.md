@@ -90,7 +90,10 @@ Implementation note:
 
 ### Player pawn/avatar RepGraph routing (implementation note)
 - Player-controlled pawns/avatars are treated as **board-scoped actors** for relevancy.
-- Current RepGraph behavior assigns replicated pawns into a per-board node during [UBrawlReplicationGraph::RefreshBoardScopedRouting()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlNet/Private/Net/BrawlReplicationGraph.cpp:215:0-385:1).
+- Routing is assigned in [UBrawlReplicationGraph::RefreshBoardScopedRouting()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlNet/Private/Net/BrawlReplicationGraph.cpp:215:0-396:1):
+  - Prefer the pawn’s owning `APlayerState` via `IBrawlBoardPresenceInterface`:
+    - `ActiveBoardActor`, else `HomeBoardActor`.
+  - Fallback: nearest `ABrawlBoardActor` by distance (deterministic tie-break by board name).
 - Spectators (who gather all board nodes) will receive all pawns/avatars as part of those board nodes.
 
 ---

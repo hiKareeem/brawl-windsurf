@@ -104,6 +104,19 @@ When a client requests to scout `TargetPlayerId`:
 - Sets the viewer’s scouted selection state,
 - Teleports the viewer’s avatar to the resolved board,
 - The client switches into Board Camera mode.
+### Scouted board state updates are idempotent
+
+[ABrawlPlayerState::SetScoutedBoardActor(PlayerId, BoardActor)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:312:0-335:1) must be idempotent:
+- If `(ScoutedPlayerId, ScoutedBoardActor)` already equals `(PlayerId, BoardActor)`, the call is a no-op.
+
+Rationale:
+- Prevents redundant delegate broadcasts (`OnScoutedBoardActorChanged`) and avoids spamming server-authored teleports/camera triggers that are driven by those state changes.
+
+### Scouting invalidation (server-authored)
+- If the scouted target becomes invalid (becomes spectator, `Life <= 0`, or leaves the match), the server clears the viewer’s scouted state:
+  - `ScoutedPlayerId = INDEX_NONE`
+  - `ScoutedBoardActor = nullptr`
+- When scouted state clears, the client returns to auto-following their own `ActiveBoardActor` (Board Camera mode).
 
 ### 5.3 Teleport destination
 - The board provides a camera view transform already (host/guest offsets).
