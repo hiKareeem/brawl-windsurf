@@ -79,8 +79,10 @@ globs:
 - [x] Implement [UBrawlReplicationGraph](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlNet/Private/Net/BrawlReplicationGraph.cpp:15:0-17:1) routing buckets (match-global vs per-board) + spectator routing
 
 ### v3.3 Spectator/scouting UX (partial until we decide + implement replication policy changes)
-- [~] Board switching + scoreboard; decide spectator economy visibility policy and wire via RepGraph
-- [~] Player avatar + camera integration (GASP + GameplayCameras):
+- [x] Board switching + scoreboard (UI/UX polish pending)
+  - [x] Spectator visibility policy implemented: spectators see all boards + all shops (shop offers replicate via `COND_NetGroup` + `Brawl.Spectator` net condition group membership)
+  - [x] Automation: `Brawl.Net.ReplicationVisibility.SpectatorSeesAllBoardsAndShops.LVL_Sandbox`
+- [~] Player avatar + camera integration (GASP + GameplayCameras): (pending 2 weeks)
   - Server-auth scouting state + RepGraph scouted-board routing (**implemented**)
   - Server-auth teleport hooks + BP [ForceBoardCameraMode()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:33:1-33:29) triggers (**implemented**)
   - Camera rig/UX polish remains pending (content/BP work)
@@ -102,7 +104,8 @@ globs:
 ### v3.4 Dedicated server readiness + GameLift integration (deferred unless needed)
 - [x] Artifact staging directory for GameLift-collected logs (replay + JSONL)
 - [x] RPC validation/rate limiting sweep
-
+- [~] Automation: EndMatch cleanup regressions (arena transfer + ghost roster)
+  - Ensures EndMatch restores `ActiveBoardActor`, clears arena `GuestPlayerId`, returns transfer plan units, and destroys/unregisters ghost roster units.
 ---
 
 ## v4 (content ramp + balance + UX “playable loop”) — after v3 is stable

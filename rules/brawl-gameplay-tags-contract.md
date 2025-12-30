@@ -4,128 +4,202 @@ description:
 globs: 
 ---
 
-# GameplayTags Contract
+# Gameplay Tags Contract (Namespaces & Authority)
 
-GameplayTags are the primary rules language. Prefer tags + tag queries over enums except where performance is proven critical.
+## Purpose
+This document defines:
+- the **authoritative GameplayTag namespaces**
+- what each namespace means
+- who is allowed to create or reference tags within them
+
+GameplayTags are a shared language.  
+Uncontrolled creation breaks determinism, balance, and tooling.
 
 ---
 
-## 1) Naming conventions
-- Use dot-separated namespaces: `State.CC.Stun`, `Trait.Ranger`, `Ability.Basic.Fireball`
-- Use singular nouns for identities: `Trait.Ranger` not `Traits.Rangers`
-- Avoid embedding numbers in tags; thresholds live in TraitData.
+## 1) Hard Rules (Non-Negotiable)
+
+- All tags must belong to a defined namespace.
+- Namespaces are owned; ownership is exclusive.
+- Do not invent new namespaces without updating this document.
+- Tags describe **state or intent**, not behavior.
+- Tags must be stable across builds and replays.
+
+If a required concept does not fit an existing namespace: STOP.
 
 ---
 
-## 2) Required namespaces (minimum)
-### Phases
-- `Phase.Planning`
-- `Phase.Combat`
-- `Phase.Rewards`
-- `Phase.ItemShop` (planning-like ItemShop round; not the UnitShop economy UI)
+## 2) Canonical Namespaces
 
-### Unit states
-- `State.Alive`
-- `State.Dead`
-- `State.Victory` (applied to winning team units after their arena fight ends; disables AI/targeting and enables victory presentation)
+### `Unit.*`
+Describes unit identity and classification.
 
-### Cooldowns (ability activation gating)
-- `State.Cooldown.Basic`
-- `State.Cooldown.Ultimate`
+Examples:
+- `Unit.Class.Melee`
+- `Unit.Size.Large`
 
-### Crowd control and immunities
-- `State.CC.Stun`
-- `State.CC.Silence`
-- `State.CC.Disarm`
-- `State.CC.Root` (if applicable)
-- `State.Immune.CC`
-- `State.Immune.Damage` (if applicable)
-- `State.Cleansed` (optional marker)
+Owned by:
+- Unit data authoring
 
-### Damage typing
+Must NOT be added dynamically.
+
+---
+
+### `Ability.*`
+Describes ability identity and category.
+
+Examples:
+- `Ability.Basic`
+- `Ability.Ultimate`
+
+Owned by:
+- Ability data
+
+Used for:
+- filtering
+- gating
+- UI
+
+---
+
+### `DamageClass.*`
+Describes damage semantics.
+
+Examples:
 - `DamageClass.Physical`
 - `DamageClass.Special`
-- `DamageClass.Mixed`
-- `DamageClass.True`
 
-Elements:
+Owned by:
+- Combat math contract
+
+Must map cleanly into ExecCalcs.
+
+---
+
+### `Element.*`
+Describes elemental typing.
+
+Examples:
 - `Element.Fire`
 - `Element.Water`
-- `Element.Nature`
-- `Element.Ice`
-- `Element.Toxic`
-- `Element.Earth`
-- `Element.Nitro`
-- `Element.Light`
-- `Element.Void`
-- `Element.Psychic`
-- `Element.Electric`
-- `Element.Wind`
 
-#### Element naming note
-- `Element.Nature` is the canonical plant element tag. Do not use `Element.Grass`.
+Rules:
+- Exactly one per damage instance
+- Exactly one per defender
 
-### Identity tags
-- `Faction.Player`
-- `Faction.Creep`
-- `Faction.Summon`
-
-### Content identity
-- `Trait.<Name>`
-- `Item.<Name>`
-- `Ability.Basic.<Name>`
-- `Ability.Ultimate.<Name>`
-
-### Data (SetByCaller keys)
-`Data.*` tags are reserved as **numeric SetByCaller magnitudes** passed into GameplayEffect specs.
-They are not “identity” tags and must not be repurposed for other semantics.
-
-Optional reserved keys (v1):
-- `Data.EnergyGained`
-  - Energy gained on a successful cast (or other designer-authored trigger). Defaults to 0 when absent.
-- `Data.EnergyCost`
-  - Energy spent on a successful cast. Defaults to 0 when absent.
-
-Required keys:
-- `Data.Power`
-  - Base ability power input for `ExecCalc_Damage` (>= 0)
-- `Data.Mod`
-  - Multiplicative modifier term for damage (defaults to 1.0 when absent)
-- `Data.Flat`
-  - Flat add/sub modifier term for damage (defaults to 0.0 when absent)
-- `Data.CooldownBaseSeconds`
-  - Base cooldown seconds input for the cooldown duration calculation (MMC)
-
-Policy:
-- Treat missing `Data.*` keys as the documented defaults.
-- If you introduce a new `Data.*` key, update this contract + the owning central policy (`ExecCalc_*` / `MMC_*`) so behavior stays auditable and consistent.
+Owned by:
+- Combat math + data model
 
 ---
 
-## 3) Ownership rules (who can add/remove tags)
-- Combat state tags (`State.*`) are applied/removed only by:
-  - GameplayEffects / Abilities (server authority)
-  - Unit lifecycle code (server authority)
-- Phase tags are owned by Match/Phase system (GameState/RoundManager), not by UI.
-- Identity tags (`Trait.*`, `Element.*`, etc.) originate from DataAssets and may be augmented by traits/items.
+### `Trait.*`
+Describes trait membership.
+
+Examples:
+- `Trait.Assassin`
+- `Trait.Mage`
+
+Owned by:
+- Trait data
+
+Traits must never be inferred implicitly.
 
 ---
 
-## 4) Reserved tags used by core systems
-These tags have hard-coded meaning in systems and must not be repurposed:
-- `Phase.*` for phase gating/validation
-- `State.Dead` for removal/target invalidation
-- `State.Cooldown.*` for ability activation gating (e.g., basics blocked by `State.Cooldown.Basic`)
-- `State.CC.*` for targeting/cast restrictions
-- `DamageClass.*` for ExecCalc formula branch
-- `Faction.*` for team logic and PvE vs PvP handling
-- `Data.*` SetByCaller keys for central math policies (damage, cooldown, etc.)
-  - At minimum: `Data.Power`, `Data.Mod`, `Data.Flat`, `Data.CooldownBaseSeconds`
+### `Item.*`
+Describes item identity and category.
+
+Examples:
+- `Item.Weapon`
+- `Item.Support`
+
+Owned by:
+- Item data
 
 ---
 
-## 5) Tag query guidelines
-- Target selection and cast gating must use TagQueries so designers can extend rules without code edits.
-- Example: “can cast ultimate if NOT `State.CC.Silence` AND target NOT `State.Dead`”.
+### `State.*`
+Describes transient runtime state.
+
+Examples:
+- `State.Stunned`
+- `State.Invulnerable`
+
+Rules:
+- Applied dynamically
+- Must have clear lifetime
+- Must be removable deterministically
+
+Owned by:
+- Runtime systems
 
 ---
+
+### `Event.*`
+Describes logged events.
+
+Examples:
+- `Event.Combat.Damage`
+- `Event.Unit.Death`
+
+Owned by:
+- Event log schema
+
+Used only for logging and replay.
+
+---
+
+## 3) Reserved / Restricted Tags
+
+These tags (and subtrees) are **reserved**:
+- `Internal.*`
+- `Debug.*`
+- `Temp.*`
+
+They must never affect gameplay logic.
+
+---
+
+## 4) Ownership vs Consumption
+
+- Owning a namespace means:
+  - defining tags
+  - approving additions
+- Consuming a namespace means:
+  - querying tags
+  - reacting to tags
+
+Most systems **consume**, few **own**.
+
+---
+
+## 5) Forbidden Patterns
+
+- Creating tags at runtime
+- Encoding logic in tag names
+- Using tags as numeric values
+- Using tags to bypass contracts
+- Cross-namespace overloading
+
+---
+
+## 6) Adding New Tags (Required Procedure)
+
+To add a new tag:
+1. Identify existing namespace
+2. Verify owner
+3. Add tag to central tag list
+4. Update references if required
+
+STOP if:
+- a new namespace seems necessary
+- a tag replaces a stat
+- a tag implies new behavior
+
+---
+
+## References
+- Combat math: `brawl-combat-math-contract.md`
+- Ability authoring: `brawl-ability-authoring-guide.md`
+- Data model: `brawl-data-model-contract.md`
+- Event logging: `brawl-event-log-schema.md`

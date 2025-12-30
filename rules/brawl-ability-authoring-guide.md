@@ -4,107 +4,194 @@ description: Ability authoring guide
 globs: 
 ---
 
-# Ability Authoring Guide (Data-driven, GAS-first)
+# Ability Authoring Guide (GAS-first, Data-driven)
 
-Goal: abilities remain modular and designer-friendly. Avoid bespoke one-off logic.
+## Purpose
+This document defines **how abilities must be authored** so they remain:
+- modular
+- designer-driven
+- deterministic
+- compatible with centralized combat, replication, and replay systems
 
----
-
-## 1) Required structure
-Every ability must be built from:
-- AbilityData (numbers + tags + targeting policy + projectile policy)
-- A GameplayAbility class derived from:
-  - `UBrawlGA_BasicBase` or `UBrawlGA_UltimateBase`
-
-Do not implement unique cooldown/energy/damage rules inside individual abilities unless the base system cannot express them.
+It does **not** define combat math, replication rules, or economy behavior.  
+Those are owned by their respective contracts.
 
 ---
 
-## 2) Damage and healing
-- Abilities must not calculate final damage directly.
-- Abilities provide inputs:
-  - Base power (e.g., SetByCaller `Data.Power`)
-  - Damage class tag (`DamageClass.*`: Physical/Special/Mixed/True)
-  - Element tag (`Element.*`)
-  - Optional modifiers via SetByCaller magnitudes and tags
-  - `ExecCalc_Damage` applies mitigation, type effectiveness, and STAB centrally.
-Optional standard modifiers (SetByCaller magnitudes):
-- `Data.Mod` (multiplicative, defaults to 1.0)
-- `Data.Flat` (additive, defaults to 0.0)
+## 1) Hard Rules (non-negotiable)
 
-Cooldown authoring convention:
-- When applying a cooldown GameplayEffect, set SetByCaller `Data.CooldownBaseSeconds` from `AbilityData.CooldownBaseSeconds` so the cooldown MMC can apply the global Spd scaling policy.
+- Abilities **must not** calculate final damage or healing.
+- Abilities **must not** implement bespoke cooldown, energy, or stat logic.
+- Abilities **must not** emit duplicate combat events.
+- Abilities **must** be deterministic given identical inputs.
+- Presentation (GameplayCues, FX) **must never** affect gameplay.
+
+If a rule cannot be expressed with existing base systems, escalate — do not hack around it.
 
 ---
 
-## 3) Targeting policies
-Each ability references a TargetingPolicy that defines:
-- target selection mode (nearest, lowest HP, backline, threat, cone, etc.)
-- behavior on target death during cast:
-  - Retarget / Fizzle / LastPosition
-- eligibility tag queries (e.g., ignore `State.Dead`, ignore `State.Immune.CC`, etc.)
-- currently global within the current world; arena scoping deferred
-- Determinism (required):
-  - Target resolution must be deterministic across runs; do not rely on iteration order for tie resolution.
-  - When candidates tie (e.g., `NearestEnemy` distance within an epsilon), break ties by lowest stable `FBrawlUnitInstanceId` (i.e., `UnitId.Value`).
-  - Use a small epsilon (recommend: `KINDA_SMALL_NUMBER` for `DistSq` comparisons) and apply this tie-break consistently for any new selection modes.
-- `LastPosition` clarification:
-  - When `LastPosition` is chosen, the “target position snapshot” is taken at target resolution time and should be recorded in `Combat.TargetChosen` (and/or `Combat.ProjectileSpawned` if a projectile is used).
+## 2) Required Structure
+
+Every ability consists of:
+- **AbilityData** (`UBrawlAbilityData`)
+  - numbers, tags, targeting policy, projectile policy
+- **GameplayAbility class**, derived from:
+  - `UBrawlGA_BasicBase`
+  - `UBrawlGA_UltimateBase`
+
+Authoring logic belongs in:
+- base classes
+- standardized helpers
+- ExecCalcs / MMCs (for math)
+
+Never in one-off ability subclasses.
 
 ---
 
-## 4) Central combat driver integration (locked target + event emission)
-When combat casting is driven centrally (not per-unit tick), the server may resolve a target *before* activating the ability.
+## 3) Damage & Healing Inputs
 
-- Central driver: [UBrawlCombatManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlCombatManagerComponent.cpp:18:0-21:1) (BrawlMatch)
-  - Resolves `UBrawlTargetingPolicy`
-  - Publishes `Combat.TargetChosen` and `Combat.AbilityCast` via `UBrawlGA_Base`
+Abilities provide **inputs only**. Final values are computed centrally.
 
-- Abilities must avoid double-emitting these events.
-  - If the avatar implements `IBrawlCombatTargetProviderInterface` ([GetLockedTarget](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:43:4-43:64), [GetLockedAbilityId](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlUnit/Public/Actors/BrawlUnitCharacter.h:44:4-44:54)), an ability may:
-    - Use the locked target when `LockedAbilityId == AbilityId`
-    - Skip re-publishing `Combat.TargetChosen` / `Combat.AbilityCast` (the driver already emitted them)
+### Required inputs
+- `Data.Power` (SetByCaller)
+- `DamageClass.*` tag
+- `Element.*` tag
 
-- If no locked target is provided (or it doesn’t match), the ability resolves target normally and emits events normally.
+### Optional standard modifiers
+- `Data.Mod` — multiplicative (default 1.0)
+- `Data.Flat` — additive (default 0.0)
 
----
+All damage math is owned by:
+- `ExecCalc_Damage`
 
-## 5) Projectiles
-If travel time matters:
-- Use a projectile actor policy; **impact applies effects/damage** (server-authoritative).
-
-- Snapshot timing:
-  - If using `LastPosition` (or any “fire at location” behavior), capture the target position snapshot at **target resolution / cast start time**, not at impact time.
-  - The projectile uses that snapshot for its aim. It does not “retarget mid-flight”.
-
-- Event log (server-only):
-  - Emit `Combat.ProjectileSpawned` when the projectile is spawned.
-  - Emit exactly one `Combat.ProjectileImpacted` when the projectile ends (hit, miss, expiry, destroyed).
-  - All projectile event timestamps (`SpawnTimeSeconds`, `ImpactTimeSeconds`) must use the same timebase as `FBrawlEventBase.ServerTimeSeconds` (match time since start).
+See:
+- `brawl-combat-math-contract.md`
 
 ---
 
-## 6) On-hit procs, auras, persistent effects
-Preferred patterns:
-- On-hit: apply a GE that triggers via tags/events, or use a standardized on-hit ability hook.
-- Aura: periodic GE application driven by a standardized aura component/ability pattern.
-- Persistent zones: standardized “AOE zone actor” pattern (server-authoritative) rather than custom per ability.
+## 4) Cooldown Authoring
+
+When applying a cooldown GameplayEffect:
+- Set `Data.CooldownBaseSeconds` from `AbilityData.CooldownBaseSeconds`
+- Global Spd scaling is applied centrally via MMC
+
+Abilities must not scale cooldowns directly.
 
 ---
 
-## 7) Conditional trait/item interactions
-Complex conditions must be implemented using a consistent mechanism (pick one and stick to it):
-- Tag-driven + standardized listeners (e.g., “FirstCast”, “After10Seconds”, “Frontline>=2 Tanks”)
-- Avoid hardcoding trait names in ability code; use tag queries.
+## 5) Targeting Policies
+
+Each ability references a **TargetingPolicy** DataAsset.
+
+A TargetingPolicy defines:
+- selection mode (nearest, lowest HP, cone, etc.)
+- eligibility tag queries
+- behavior on target death:
+  - `Retarget`
+  - `Fizzle`
+  - `LastPosition`
+
+### Determinism requirements
+- Target resolution must be deterministic.
+- Never rely on iteration order.
+- Tie-breaking rule:
+  - choose lowest `FBrawlUnitInstanceId`
+- Use a consistent epsilon (`KINDA_SMALL_NUMBER`) for distance ties.
+
+### `LastPosition` invariant
+- Snapshot target position **at target resolution time**
+- Never re-evaluate at impact time
+- Snapshot must be logged via `Combat.TargetChosen` (or projectile spawn)
 
 ---
 
-## 8) GameplayCues
-- Cues are presentation only.
-- No gameplay logic in cues.
-- Abilities trigger cues through standardized cue tags.
+## 6) Central Combat Driver Integration
+
+Combat may be driven centrally (not per-unit tick).
+
+When this is active:
+- The server may resolve the target **before** ability activation
+- `Combat.TargetChosen` and `Combat.AbilityCast` may already be emitted
+
+### Locked target behavior
+If the avatar implements `IBrawlCombatTargetProviderInterface`:
+- Use the locked target **only if** `LockedAbilityId == AbilityId`
+- Do **not** re-emit:
+  - `Combat.TargetChosen`
+  - `Combat.AbilityCast`
+
+If no valid lock exists:
+- Resolve targeting normally
+- Emit events normally
 
 ---
 
-## 9) GameplayEffects
-- GEs can be authored in Blueprint. If it make sense to do so, request the GE and specify your desired fields and it'll get done. 
+## 7) Projectiles
+
+Use a projectile actor **only when travel time matters**.
+
+### Projectile invariants
+- Server-authoritative
+- Impact applies effects/damage
+- Never retarget mid-flight
+
+### Event requirements (server-only)
+Emit exactly once:
+- `Combat.ProjectileSpawned`
+- `Combat.ProjectileImpacted`
+
+All timestamps must use:
+- `FBrawlEventBase.ServerTimeSeconds`
+
+---
+
+## 8) On-Hit, Auras, Persistent Effects
+
+Use standardized patterns only:
+
+- **On-hit**
+  - tag-driven GE triggers
+  - standardized on-hit hooks
+- **Auras**
+  - periodic GE application via shared aura pattern
+- **Persistent zones**
+  - standardized server-authoritative AOE actor
+
+Do not invent custom per-ability frameworks.
+
+---
+
+## 9) Trait & Item Interactions
+
+Complex conditions must use **one consistent mechanism**:
+- tag-driven listeners
+- standardized condition assets (e.g., FirstCast, AfterXSeconds)
+
+Do not hardcode trait or item names in ability logic.
+
+---
+
+## 10) GameplayCues
+
+- Presentation only
+- No gameplay logic
+- Triggered via standardized cue tags
+
+---
+
+## 11) GameplayEffects
+
+GameplayEffects may be authored in Blueprint.
+
+If a new GE pattern is needed:
+- specify required fields
+- request it explicitly
+- do not clone existing effects ad hoc
+
+---
+
+## References
+- Combat math: `brawl-combat-math-contract.md`
+- Target tags: `brawl-gameplay-tags-contract.md`
+- Event schema: `brawl-event-log-schema.md`
+- Replication rules: `brawl-replication-contract.md`

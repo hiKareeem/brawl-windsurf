@@ -19,7 +19,7 @@ If anything here conflicts with other docs, follow them in this order:
 ---
 
 ## Assistant behavior rules
-- **Feel free to build/test:** "E:\Unreal Engine\UE_5.7\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
+- **You may build/compile/test but do not run/package.** Unreal location: "E:\Unreal Engine\UE_5.7\Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 - **Rule citations (lightweight):** When making an architectural decision, rejecting an approach, or implementing something security/replication-sensitive, include a short **“Rules Applied:”** line citing the relevant document section(s) (by file name + heading).
     - Do NOT list rules for trivial edits (typos, renames, formatting).
 - **Changes must be explicit:** When generating implementation output, always include:

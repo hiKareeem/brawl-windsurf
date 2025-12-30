@@ -4,181 +4,196 @@ description: Data model
 globs: 
 ---
 
-# Data Model Contract (Assets, Tables, and Runtime Mapping)
+# Data Model Contract (Authoritative Content Pipeline)
 
-Systems in C++; content authored in DataAssets / GAS assets / Blueprint. This document defines required asset schemas and how they map to runtime.
+## Purpose
+This document defines:
+- which **DataAsset and table types are allowed**
+- what each one owns
+- how static data becomes runtime state
 
----
-
-## 1) Asset identity strategy
-- Use PrimaryAssetIds for Units/Abilities/Items/Traits so references are stable and serializable.
-- Runtime objects refer to content by ID, not by raw pointers when possible (supports replay/logging/debug).
-- Project config must enable AssetManager scanning for these PrimaryDataAssets so `FPrimaryAssetId` can be resolved/loaded at runtime (e.g., `[/Script/Engine.AssetManagerSettings]` + `PrimaryAssetTypesToScan` entries).
-
-### Season gating
-- Seasonal content gating is a real feature pre-0.7.
-- When implemented, the Season asset should be a `UPrimaryDataAsset` (BrawlCore) that allowlists PrimaryAssetIds (starting with UnitData ids) to constrain shared-pool composition.
-- Until then, shared pool composition is derived from AssetManager scanning of Unit PrimaryAssets (server-only).
+If content cannot be expressed using the models below, it must be escalated before implementation.
 
 ---
 
-## 2) Required DataAssets
+## 1) Hard Rules (Non-Negotiable)
 
-Implementation requirement:
-- `UBrawlUnitData` and `UBrawlAbilityData` must derive from `UPrimaryDataAsset`.
-- Runtime/replication should refer to these assets by `FPrimaryAssetId` (stable + serializable).
-
-### UnitData (UBrawlUnitData)
-Required fields:
-- Id (PrimaryAssetId)
-- Cost (1–5), Rarity
-- Base gameplay tags:
-  - Trait tags (`Trait.*`)
-  - Element tag(s) (`Element.*`)
-  - Faction tag (`Faction.Player` / `Faction.Creep`)
-- Stat curves (CurveTable refs):
-  - per-star scaling for HP/Atk/SpAtk/Def/SpDef/Spd
-- Ability options:
-  - 3 Basic Ability references (AbilityData ids)
-  - 3 Ultimate Ability references (AbilityData ids)
-- Visuals:
-  - Unit BP class / skeletal mesh / anim set (as needed)
-
-Stat curves (v1 schema):
-- A UnitData may reference a single `UCurveTable` (`StatCurveTable`) containing `FRichCurve`/`FRealCurve` rows.
-- Each row represents one stat curve, evaluated at `X = StarLevel` (clamped 1..3).
-- Canonical row names (defaults):
-  - `MaxHealth`, `Attack`, `SpecialAttack`, `Defense`, `SpecialDefense`, `Speed`, `MaxEnergy`
-- Runtime reads are server-authoritative; missing table/row evaluates to the provided default (v1 code default is `0.0`).
-
-### AbilityData (UBrawlAbilityData)
-Required fields:
-- Id (PrimaryAssetId)
-- Ability kind: Basic or Ultimate
-- Cooldown base seconds
-- Base power (numeric)
-- Damage class tag: `DamageClass.Physical`, `DamageClass.Special`, `DamageClass.Mixed`, or `DamageClass.True`
-- Element tag (`Element.*`, from the GameplayTags Contract list)
-- Targeting policy reference (TargetingPolicy DataAsset)
-- Projectile policy:
-  - None or ProjectileData reference (travel time impacts gameplay)
-- Energy:
-  - Energy gained (Basic) and/or energy cost (Ultimate) (design-owned)
-
-### ItemData (UBrawlItemData)
-Required fields:
-- Id (PrimaryAssetId)
-- Unique item flag
-- GameplayEffects to apply (to unit and/or team)
-- Abilities to grant (optional)
-- Tags to add (optional)
-Deferred (v1):
-- Unique item flag (enforcement is deferred until multi-slot or team-wide uniqueness rules exist)
-
-### TraitData (UBrawlTraitData)
-Required fields:
-- Id (PrimaryAssetId)
-- Display name/description (localizable)
-- Thresholds list:
-  - threshold N -> list of effects
-
-### Trait threshold evaluation + effect targeting (v1)
-- **Threshold evaluation:** “highest tier wins” (non-cumulative).
-  - Determine the active tier as the largest `Threshold` where `ActiveCount >= Threshold`.
-  - Only the active tier’s effects apply.
-  - When the active tier changes, remove the previously-applied tier effects before applying the new tier.
-
-- **Effect targeting policy (per-threshold):**
-  - `ContributorsOnly`: apply to the units that contribute the trait (owned + **field** + have the trait tag).
-  - `AllOwnedFieldUnits`: apply to all owned **field** units, regardless of whether they contribute the trait.
-
-- **Effect representation + reversibility:**
-  - GameplayEffects must be tracked by handle so they can be removed cleanly.
-  - Ability grants must be tracked by spec handle so they can be removed cleanly.
-  - Tag adds/removes must be reversible and safe:
-    - TagAdds are applied as loose gameplay tags.
-    - TagRemoves should not blindly remove tags from other systems; only remove tags that the trait system previously added.
-
-- **Counts contract remains unchanged:**
-  - `ActiveCounts` (field-only) drive effects.
-  - `PotentialCounts` (bench+field) are UI-only.
-
-Effects may include:
-- Apply GameplayEffect(s) to team/units
-- Grant ability(s)
-- Add/remove tags
-- Conditional rules (first cast, after X seconds, etc.) via a standard “Condition” asset/policy
-
-Trait counting rules:
-- ActiveCounts = field only (effects applied)
-- PotentialCounts = field + bench (UI only, shown like `2(3)/3`)
-
-### RoundData / RoundSetData
-Required fields:
-- Round index / identifier
-- Round type (CombatPvP / CombatPvE / Shop / ItemShop, etc.)
-- Planning duration seconds (BP editable)
-- Combat duration seconds (BP editable; may be 0)
-- Reward definition reference
-- Creep wave reference (for PvE rounds)
-
-### Economy tuning
-- Interest table
-- Streak reward table
-- XP per buy and level thresholds
-- Roll odds by level (designer-owned)
-
-### Economy tuning (v0 semantics)
-
-**Tuning owner**
-- [UBrawlEconomyTuningData](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlEconomy/Private/Data/BrawlEconomyTuningData.cpp:2:0-7:1) is the single source of truth for economy tuning (XP curve, max level, shared pool copy counts, and a pointer to shop odds).
-
-**XP curve semantics**
-- `XPToNextLevel[i]` is the **XP required to advance from Level (i+1) to Level (i+2)**.
-- Player Level is derived from **TotalXP** by consuming thresholds in order (Level starts at 1).
-- `MaxLevel` clamps the computed Level (minimum 1).
-
-**Shop odds semantics**
-- `UBrawlShopOddsData::OddsByLevel` stores roll probabilities by Level.
-- Odds lookup uses “closest lower-or-equal” semantics:
-  - If an exact row for Level exists, use it.
-  - Otherwise, use the highest row where `Row.Level <= Level`.
-  - This allows sparse tables (e.g., define Level 1 + 4..10; Levels 2/3 reuse Level 1).
-
-**Shared pool semantics**
-- Shared pool copy counts are driven by `CopiesPerUnitByCost[cost]` (cost is clamped 1..5).
-- Pool composition is derived from the Unit PrimaryAssets (server-only), and copies-per-unit defines how many copies of each unit exist in the pool for its cost tier.
-
-Shared pool:
-- Pool counts per unit type and rules for consume/return
+- All gameplay content is **data-driven**.
+- Runtime gameplay state is **never** stored in DataAssets.
+- DataAssets are **read-only at runtime**.
+- Do not invent new DataAsset types without updating this document.
+- Identity is stable and explicit (no name-based lookups).
 
 ---
 
-## 3) Runtime mapping rules
-- Unit spawn:
-  - The server initializes base combat/energy/speed attributes immediately after `ASC->InitAbilityActorInfo(...)` once `UnitData` is known.
-  - Base values are derived from UnitData stat curves using the unit’s current `StarLevel`.
-  - Pooled defaults (v1):
-    - `CurrentHealth` starts at `MaxHealth`.
-    - `CurrentEnergy` starts at `0` (unless explicitly overridden by a round/trait/effect).
-  - Implementation note:
-    - Prefer setting ASC base values directly (e.g., `SetNumericAttributeBase`) over authoring per-unit “default attribute” GameplayEffects, to keep “add a new unit” authoring lightweight and consistent.
-- Traits:
-  - Trait component recomputes counts on roster changes and applies effects for ActiveCounts only
-- Economy:
-  - Shop offers are explicit replicated entries; offer generation is server-only
-- Ability execution:
-  - AbilityData.BasePower is passed into damage effects via SetByCaller `Data.Power`.
-  - AbilityData.CooldownBaseSeconds is passed into cooldown effects via SetByCaller `Data.CooldownBaseSeconds` (then scaled by the global cooldown MMC).
-  - Optional standardized modifiers may be passed via `Data.Mod` and `Data.Flat` (see Combat Math + GameplayTags contracts).
+## 2) Canonical DataAsset Types
+
+### `UBrawlUnitData`
+Defines a unit archetype.
+
+Owns:
+- base stats
+- default traits
+- allowed ability slots
+- visuals (via cosmetic indirection)
+
+Does NOT own:
+- runtime HP, energy, cooldowns
+- economy cost resolution
 
 ---
 
-## 4) “Add a new unit” checklist (must remain simple)
-- Create UnitData
-- Fill tags, curves, ability options
-- Assign a unit BP visual (derived from ABrawlUnitCharacter)
-- Ensure pool entry exists (counts)
-- Optional: add trait/item interactions via tags (no code)
+### `UBrawlAbilityData`
+Defines an ability configuration.
+
+Owns:
+- base power
+- cooldown base
+- targeting policy reference
+- projectile policy reference
+- gameplay tags
+
+Does NOT own:
+- damage math
+- cooldown scaling
+- stat formulas
+
+See:
+- `brawl-ability-authoring-guide.md`
 
 ---
+
+### `UBrawlItemData`
+Defines an equippable item.
+
+Owns:
+- granted tags
+- granted modifiers
+- passive hooks
+
+Does NOT own:
+- direct stat mutation logic
+- bespoke ability logic
+
+---
+
+### `UBrawlTraitData`
+Defines a trait breakpoint system.
+
+Owns:
+- thresholds
+- granted effects per tier
+
+Does NOT own:
+- hardcoded unit or item logic
+
+---
+
+### `UBrawlTargetingPolicy`
+Defines target selection behavior.
+
+Owns:
+- eligibility queries
+- selection mode
+- tie-breaking policy
+
+See:
+- `brawl-ability-authoring-guide.md`
+
+---
+
+### `UBrawlProjectilePolicy`
+Defines projectile behavior.
+
+Owns:
+- travel speed
+- lifetime
+- impact behavior class
+
+Does NOT own:
+- damage math
+- retargeting logic
+
+---
+
+## 3) Tables & Registries
+
+### Master Registries
+All DataAssets must be discoverable via:
+- explicit registries
+- or primary asset labels
+
+No runtime scanning or soft discovery.
+
+---
+
+### ID Stability
+Every gameplay-relevant asset must have:
+- a stable ID
+- never reused
+- never inferred from asset name
+
+---
+
+## 4) Runtime Mapping
+
+### Static → Runtime
+At match start:
+- DataAssets are read
+- Runtime instances are constructed
+- Runtime instances own mutable state
+
+Examples:
+- `UBrawlUnitData` → `FBrawlUnitRuntime`
+- `UBrawlItemData` → `FBrawlItemRuntime`
+
+DataAssets are never mutated or replicated.
+
+---
+
+## 5) Adding New Content (Required Procedure)
+
+When adding **new gameplay content**:
+
+1. Identify the correct existing DataAsset type
+2. Add a new instance (not a new class)
+3. Reference it via registry
+4. Validate against:
+   - tags contract
+   - combat math contract
+   - replication contract
+
+STOP if:
+- a new DataAsset type seems required
+- a DataAsset needs runtime state
+- a DataAsset must “know” about match flow
+
+---
+
+## 6) Forbidden Patterns
+
+- Per-ability DataAssets with bespoke fields
+- DataAssets that reference runtime actors
+- Storing arrays of live units/items inside assets
+- Implicit content discovery via asset paths
+- Encoding gameplay logic in Blueprint-only assets
+
+---
+
+## 7) Ownership Summary
+
+| Concern                | Owner                    |
+|------------------------|--------------------------|
+| Static config          | DataAssets               |
+| Runtime state          | Replicated sim structs   |
+| Math / scaling         | ExecCalcs / MMCs         |
+| Target selection       | TargetingPolicy assets   |
+| Projectiles            | ProjectilePolicy assets  |
+
+---
+
+## References
+- Tags: `brawl-gameplay-tags-contract.md`
+- Combat math: `brawl-combat-math-contract.md`
+- Ability authoring: `brawl-ability-authoring-guide.md`
+- Replication: `brawl-replication-contract.md`

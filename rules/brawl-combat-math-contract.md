@@ -4,146 +4,207 @@ description: Combat math
 globs: 
 ---
 
-# Combat Math Contract (ExecCalcs + Global Policies)
+# Combat Math Contract (Canonical & Centralized)
 
-This document defines the v1 canonical formulas. Designers may tune constants via DataAssets, but logic lives in central ExecCalcs/MMCs.
+## Purpose
+This document defines the **only authoritative combat formulas** in Brawl and **where they are implemented**.
 
-## Implementation status (as of 2025-12-16)
+If a number affects damage, healing, mitigation, cooldowns, or movement speed, it must be derived from rules in this document and implemented via the specified calculation path.
 
-Current shipped behavior in `ExecCalc_Damage`:
-- Supports `DamageClass.Physical`, `DamageClass.Special`, `DamageClass.Mixed`, `DamageClass.True`.
-  - Physical/Special select Atk/Def vs SpAtk/SpDef.
-  - Mixed splits 50/50 between Physical and Special ratio branches, combines deterministically, then clamps once.
-  - TrueDamage = Power (Ratio = 1.0; ignores offense/defense). True currently ignores STAB and element effectiveness.
-- Applies canonical Ratio clamp (`MinRatio`/`MaxRatio`) and final damage clamp (`MinDamage`/`MaxDamage`).
-- Applies STAB from tuning (`StabMultiplier`) when source has the same `Element.*` tag as the ability’s element tag.
-- Applies element effectiveness from tuning rules (`ElementEffectivenessRules`) keyed by ability element vs target element.
-- Honors `State.Immune.Damage` (final damage becomes 0).
-
-Also implemented:
-- SetByCaller damage modifiers:
-  - `Data.Mod` (optional, multiplicative, defaults to 1.0; non-finite treated as 1.0)
-  - `Data.Flat` (optional, additive, defaults to 0.0; non-finite treated as 0.0)
-
-Ordering (v1):
-- For Physical/Special/Mixed:
-  - `Raw = (BaseDamage * ElemMult * StabMult * Mod) + Flat`
-- For True:
-  - `Raw = (Power * Mod) + Flat` (True still ignores STAB and element effectiveness)
+This contract is higher precedence than:
+- Ability authoring
+- Traits/items
+- Designer expectations
 
 ---
 
-## 1) Stats schema (authoritative)
-- HP, MaxHP
-- Atk, SpAtk
-- Def, SpDef
-- Spd
-- Energy, MaxEnergy
+## 1) Hard Rules (Non-Negotiable)
 
-Resource pools are represented as current + max attributes (e.g., HP/MaxHP, Energy/MaxEnergy).
+- Abilities provide **inputs only**, never final values.
+- All combat math is centralized in:
+  - **ExecCalcs** (one-shot resolution)
+  - **MMCs** (derived attributes)
+- No combat math may live in:
+  - GameplayAbilities
+  - Actors
+  - Components
+  - Blueprint graphs
+- No uncontrolled randomness.
+- No per-ability math forks.
 
----
-
-## 2) Damage formula ownership
-- All damage is computed by `ExecCalc_Damage`.
-- Abilities provide:
-  - BasePower (numeric)
-  - DamageClass tag: Physical/Special/Mixed/True (`DamageClass.*`)
-  - Element tag (`Element.*`)
-  - Optional modifiers via SetByCaller magnitudes and tags
-
-### Standard SetByCaller keys (canonical)
-These tags are the canonical numeric inputs used by central math policies.
-
-Damage (`ExecCalc_Damage`):
-- `Data.Power` (required): base power input
-- `Data.Mod` (optional): multiplicative modifier, defaults to 1.0
-- `Data.Flat` (optional): flat modifier, defaults to 0.0
-
-Cooldown scaling (MMC):
-- `Data.CooldownBaseSeconds` (required): base cooldown seconds before Spd scaling
+If a rule is not defined here, it does not exist.
 
 ---
 
-## 3) Canonical v1 damage formula (explicit)
-Let:
-- A = (Atk if Physical else SpAtk)
-- D = (Def if Physical else SpDef)
-- Power = ability base power (>= 0)
-- ElemMult = element effectiveness multiplier (defaults to 1.0 unless a rule table says otherwise)
-- Mod = product of all multiplicative modifiers from tags/effects (defaults to 1.0)
-- Flat = sum of flat add/sub modifiers (defaults to 0)
-- StabMult = STAB multiplier (1.0 by default; `StabMultiplier` when source shares the ability’s `Element.*` tag)
+## 2) Damage Resolution Pipeline
 
-2) Raw = (Power * Ratio * ElemMult * StabMult * Mod) + Flat
+**Canonical order** (cannot be reordered):
 
-Compute:
-1) Ratio = clamp(A / max(D, 1), MinRatio, MaxRatio)
-2) Raw = (Power * Ratio * ElemMult * Mod) + Flat
-3) FinalDamage = clamp(Raw, MinDamage, MaxDamage)
+1. Base Power (SetByCaller)
+2. Source Stat Scaling
+3. Target Defense Mitigation
+4. Element Multiplier
+5. Global Modifiers
+6. Clamp / Floor
+7. Result Application
 
-All clamps are tuning constants (DataAsset):
-- MinRatio (default 0.25), MaxRatio (default 4.0)
-- MinDamage (default 1), MaxDamage (default large)
-
-## 3.1) Damage class semantics (v1)
-Damage class is determined by a `DamageClass.*` tag on the damage GameplayEffect spec.
-
-- `DamageClass.Physical`:
-  - A = Atk, D = Def
-- `DamageClass.Special`:
-  - A = SpAtk, D = SpDef
-- `DamageClass.Mixed`:
-  - Split 50/50 between Physical and Special branches (compute both branches using the canonical formula and combine deterministically).
-- `DamageClass.True`:
-  - TrueDamage = Power (Ratio = 1.0; ignores Atk/SpAtk and Def/SpDef).
-  - True currently ignores STAB and element effectiveness.
-
-## 3.2) STAB (Same Type Attack Bonus)
-- STAB is a multiplicative bonus applied when the source has the same `Element.*` tag as the ability’s element tag.
-- Default STAB multiplier is designer-tunable (recommended default: 1.5).
-- STAB must be applied centrally (ExecCalc), not in individual abilities.
-
-Note:
-- If you later add armor-pen/resists, do it inside ExecCalc_Damage using tags and SetByCaller values.
+All steps occur inside `ExecCalc_Damage`.
 
 ---
 
-## 4) Element effectiveness
-- Element rules are data-driven (table keyed by source `Element.*` vs target `Element.*` -> multiplier).
-- Default multiplier is 1.0 when no rule exists.
+## 3) Base Damage Formula
+
+BaseDamage =
+Power
+
+    SourceAttackScalar
+
+    ElementMultiplier
+
+    GlobalDamageScalar
+
+
+Where:
+- `Power` = `Data.Power` (required SetByCaller)
+- `SourceAttackScalar` derives from attacker stats
+- `ElementMultiplier` derives from element matchup
+- `GlobalDamageScalar` includes buffs/debuffs
+
+No step may be skipped.
 
 ---
 
-## 5) Speed policy (global)
-Spd affects movement and cooldowns with a single shared reference constant `SpdRef` (default 100).
+## 4) Attack vs Defense Mitigation
 
-### Move speed
-- MoveSpeedMultiplier = clamp(Spd / SpdRef, MinMoveMult, MaxMoveMult)
-- CharacterMovement MaxWalkSpeed = BaseMoveSpeed * MoveSpeedMultiplier
+Mitigation uses a **Pokémon-style diminishing returns curve**.
 
-### Cooldown scaling
-Canonical v1 semantics: higher Spd = faster cooldowns.
-- CooldownMultiplier = clamp(SpdRef / max(Spd, 1), MinCDMult, MaxCDMult)
-- EffectiveCooldownSeconds = BaseCooldownSeconds * CooldownMultiplier
+MitigatedDamage =
+BaseDamage * ( Attack / (Attack + Defense) )
 
-Tuning clamps (DataAsset):
-- MinMoveMult, MaxMoveMult
-- MinCDMult, MaxCDMult (example: 0.25..4.0)
 
-Cooldown scaling must be implemented centrally (MMC or a single shared function), not per ability.
+Properties:
+- Always asymptotic (never reaches 0)
+- Stable under large stat values
+- No caps unless explicitly added here
+
+This logic lives exclusively in:
+- `ExecCalc_Damage`
 
 ---
 
-## 6) Energy rules (v1)
-- Basics generate energy on cast (and optionally on hit) via designer-authored values.
-- Ultimate casts when Energy >= MaxEnergy (default behavior).
-- Exact energy gain values are authored in AbilityData/GE, but the trigger rule is centralized.
+## 5) Element Interaction
 
-Energy spend/gain application (v1):
-- On successful cast, apply both cost and gain on the server:
-  - `NewEnergy = clamp(CurrentEnergy - max(EnergyCost, 0) + max(EnergyGained, 0), 0..MaxEnergy)`
-- Ultimate default trigger remains:
-  - cast when `CurrentEnergy >= MaxEnergy` (then cost/gain are applied as above).
+- Exactly one **Element tag** per damage instance
+- Exactly one **Element tag** per defender
+
+Multiplier lookup:
+- Defined by element chart DataAsset
+- Resolved inside `ExecCalc_Damage`
+
+Rules:
+- No stacking elements
+- No dynamic element mutation mid-resolution
+- No per-ability overrides
 
 ---
+
+## 6) Healing Formula
+
+Healing mirrors damage **without mitigation**.
+
+FinalHealing =
+Power
+
+    SourceHealingScalar
+
+    GlobalHealingScalar
+
+
+- No element interactions
+- No defense scaling
+- Implemented in `ExecCalc_Healing`
+
+---
+
+## 7) Crits & Randomness
+
+There are **no crits** unless explicitly added here.
+
+- No % rolls
+- No bonus variance
+- No per-hit randomness
+
+If crits are introduced in the future:
+- They must be deterministic
+- They must be logged
+- This document must be updated first
+
+---
+
+## 8) Speed (Spd) Policies
+
+### Cooldown Scaling
+- Spd reduces cooldown multiplicatively
+- Scaling is applied via MMC
+- Abilities supply **base cooldown only**
+
+Example:
+
+FinalCooldown = BaseCooldown / SpdScalar
+
+
+No ability may modify its own cooldown beyond base input.
+
+---
+
+### Movement Speed
+- Spd contributes to MoveSpeed via MMC
+- Actor tick rate must not affect resolution
+- No per-ability movement math
+
+---
+
+## 9) Global Modifiers
+
+Global modifiers include:
+- Buffs / debuffs
+- Trait effects
+- Item effects
+
+Rules:
+- Applied multiplicatively unless stated otherwise
+- Order-independent
+- Resolved centrally
+
+No modifier may directly alter final damage outside ExecCalcs.
+
+---
+
+## 10) Clamping & Floors
+
+- Damage floors at `>= 1` unless explicitly specified otherwise
+- Healing floors at `>= 0`
+- Clamps occur **after** all multipliers
+
+---
+
+## 11) Ownership Summary
+
+| Concern              | Owner               |
+|----------------------|---------------------|
+| Damage math          | ExecCalc_Damage     |
+| Healing math         | ExecCalc_Healing    |
+| Defense mitigation   | ExecCalc_Damage     |
+| Element multipliers  | ExecCalc_Damage     |
+| Cooldown scaling     | MMC                 |
+| MoveSpeed scaling    | MMC                 |
+
+If ownership is unclear, stop.
+
+---
+
+## References
+- Ability inputs: `brawl-ability-authoring-guide.md`
+- Tags: `brawl-gameplay-tags-contract.md`
+- Events: `brawl-event-log-schema.md`
+- Validation: `brawl-server-validation-checklist.md`
