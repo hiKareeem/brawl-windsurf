@@ -118,6 +118,13 @@ Rationale:
   - `ScoutedBoardActor = nullptr`
 - When scouted state clears, the client returns to auto-following their own `ActiveBoardActor` (Board Camera mode).
 
+### Implementation notes: server-authored teleports on board-selection state
+- Board/presence teleports are **server-authored** and triggered by [ABrawlPlayerState](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlPlayerState.cpp:66:0-77:1) state changes:
+  - [SetActiveBoardActor(...)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerState.h:103:4-103:61) teleports the owning player avatar to the new board presence anchor.
+  - [SetScoutedBoardActor(TargetPlayerId, BoardActor)](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerState.h:113:4-113:80) teleports the owning player avatar to the scouted board presence anchor for `TargetPlayerId`.
+- Scouting selection state (`ScoutedPlayerId`, `ScoutedBoardActor`) is replicated **owner-only** (viewer-only), since it is presentation state for that viewer’s camera/pawn.
+- When a player becomes a spectator (including elimination), that player’s own scouting selection is cleared server-side.
+
 ### 5.3 Teleport destination
 - The board provides a camera view transform already (host/guest offsets).
 - The avatar teleport destination should be a **board-defined “presence anchor”** near the relevant side of the board.

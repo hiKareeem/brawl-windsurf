@@ -69,9 +69,16 @@ globs:
   - starts replay recording (if enabled)
   - starts [UBrawlRoundManagerComponent::StartMatchFlow()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:15:0-34:1)
 - [UBrawlRoundManagerComponent](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Components/BrawlRoundManagerComponent.cpp:10:0-13:1) is the phase/round driver. When the `RoundSet` is exhausted, it ends the match via [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1).
-- [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:36:0-51:1):
-  - sets replicated `bMatchEnded`
-  - broadcasts `OnMatchEnded` (server + clients)
+- [ABrawlGameState::EndMatch()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:109:0-145:1) (server-only) performs best-effort teardown-safe cleanup before broadcasting match end:
+  - If `UWorld` is valid and not tearing down:
+    - cleanup any active ghost roster snapshot ([ServerCleanupGhostRosterSnapshot()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:573:0-651:1))
+    - if an arena transfer plan is still active, return transferred units ([ReturnUnitsFromArenaTransferPlan()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameState.cpp:866:0-999:1))
+    - restore every player’s `ActiveBoardActor` back to their stable home `BoardActor`
+  - Then set replicated `bMatchEnded` and broadcast `OnMatchEnded` (server + clients)
+
+Rationale:
+- Matches can end while units are transferred/away; we must not leave boards, guest ids, or active-board presence in a mid-combat state.
+- Cleanup is skipped during teardown to avoid late-replication/PIE shutdown hazards.
 
 ## Combat resolution + internal Rewards phase (v2)
 ### Combat end conditions: double elimination tie-break (v1)

@@ -90,6 +90,11 @@ While viewer is scouting `TargetPlayerId`:
 - If the target's `ActiveBoardActor` changes (home ↔ arena, or arena switches), the viewer's `ScoutedBoardActor` must update to the new `ActiveBoardActor` automatically (server-authored).
 - This keeps scouting stable through arena transfers and prevents stale camera/teleport destinations.
 
+### Scouting state replication (viewer-only)
+- `ABrawlPlayerState::ScoutedPlayerId` and `ScoutedBoardActor` replicate `COND_OwnerOnly`.
+  - Reason: this state is used to drive the *viewer’s* camera/teleport/UI and is not required by other players for gameplay authority.
+- Board assignment state (`BoardActor`, `ActiveBoardActor`) replicates match-visible (`COND_None`) and is server-authored.
+
 Loop semantics:
 - Iterate `GameState.PlayerArray` deterministically.
 - For each viewer, if `ViewerPS.ScoutedPlayerId == TargetPlayerId`, clear by setting `(ScoutedPlayerId = INDEX_NONE, ScoutedBoardActor = nullptr)`.

@@ -125,6 +125,10 @@ globs:
 - [ ] Establish a repeatable “balance workflow” (recorded seeds + test scenarios)
 - [x] Odd player count rule: unpaired player fights a deterministic ghost roster snapshot of another actively-fighting player
   - Automation: `Brawl.Match.GhostRoster.ArenaResolvedEvent.LVL_Sandbox`
+- [x] Ghost roster snapshot cleanup (defensive)
+  - Ghost roster unit tracking (`GhostUnitIds`) is best-effort. Cleanup must also remove any unit actors registered on the ghost arena board that are owned by `GhostSourcePlayerId` (fallback).
+  - Cleanup order must be deterministic (sort by `FBrawlUnitInstanceId.Value`).
+  - After cleanup, clear the ghost arena board guest assignment (`GuestPlayerId = INDEX_NONE`) when appropriate to avoid leaving an arena board in an “assigned guest” state.
 
 ---
 
