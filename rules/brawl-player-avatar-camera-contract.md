@@ -1,6 +1,6 @@
 ---
-trigger: always_on
-description: 
+trigger: model_decision
+description: When working on player character or camera
 globs: 
 ---
 
@@ -86,6 +86,9 @@ We use the **GameplayCameras** plugin (GASP’s camera stack) to implement these
 - Manual switching to OTS is allowed at any time, but:
   - the next ActiveBoardActor change or scout request re-forces Board Camera.
 
+#### Spectator note (no pawn)
+- If the local controller has no pawn (spectator), the controller may use a transient `ACameraActor` as the view target when applying board camera views.
+
 ---
 
 ## 5) Teleport rules (TFT-style “move the little legend”)
@@ -106,6 +109,13 @@ When a client requests to scout `TargetPlayerId`:
 - The board provides a camera view transform already (host/guest offsets).
 - The avatar teleport destination should be a **board-defined “presence anchor”** near the relevant side of the board.
 - The anchor must be cosmetic and must not impact gameplay. Exact anchor authoring is content/iteration-driven.
+
+#### Current default (C++ implementation)
+- `ABrawlBoardActor::TryGetPresenceAnchorTransformForPlayer(PlayerId, ...)`:
+  - Uses a field coord anchor (not bench): `X = FieldWidth - 1`
+  - `Y = 0` for host, `Y = FieldHeightTotal - 1` for guest
+  - Facing: host yaw 180, guest yaw 0
+- This remains cosmetic-only and may be replaced by data-driven anchors later.
 
 ---
 

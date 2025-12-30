@@ -15,8 +15,8 @@ Systems in C++; content authored in DataAssets / GAS assets / Blueprint. This do
 - Runtime objects refer to content by ID, not by raw pointers when possible (supports replay/logging/debug).
 - Project config must enable AssetManager scanning for these PrimaryDataAssets so `FPrimaryAssetId` can be resolved/loaded at runtime (e.g., `[/Script/Engine.AssetManagerSettings]` + `PrimaryAssetTypesToScan` entries).
 
-### Season gating (deferred)
-- Seasonal content gating is intentionally deferred until we have enough content to justify it.
+### Season gating
+- Seasonal content gating is a real feature pre-0.7.
 - When implemented, the Season asset should be a `UPrimaryDataAsset` (BrawlCore) that allowlists PrimaryAssetIds (starting with UnitData ids) to constrain shared-pool composition.
 - Until then, shared pool composition is derived from AssetManager scanning of Unit PrimaryAssets (server-only).
 

@@ -165,3 +165,19 @@ Rate limit:
 - Visibility is enforced via replication conditions + ReplicationGraph routing (not via gameplay RPCs).
 
 ---
+
+## 6) Scouting requests
+### RequestScoutPlayer(TargetPlayerId)
+Validate (in addition to the basics):
+- Reject `TargetPlayerId == INDEX_NONE`
+- Reject unknown TargetPlayerId (not found in `GameState->PlayerArray`)
+- Reject target spectator
+- Reject target eliminated (`Life <= 0`)
+- Reject if target has no `ActiveBoardActor` and no `BoardActor`
+
+Rate limit:
+- Controlled by `brawl.Net.RateLimit.ScoutPlayerSeconds` (0 disables)
+
+Logging:
+- Rejection logging controlled by `brawl.Net.LogRejectedRequests` (non-zero enables)
+- Log category: `LogBrawlNet`

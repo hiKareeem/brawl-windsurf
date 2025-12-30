@@ -11,11 +11,6 @@ globs:
 - [~] Partial / follow-up needed
 - [ ] Pending
 
-### Current parallelizable workflows (next)
-- [x] **v3.2 ReplicationGraph:** implement [UBrawlReplicationGraph](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlNet/Private/Net/BrawlReplicationGraph.cpp:15:0-17:1) (per-board relevancy + spectator routing)
-- [x] **v3.1 Multi-arena:** pairings + transfer/return generalized to N concurrent arenas + elimination wiring
-- [~] **v3.3 Spectator/scouting UX:** board switching + scoreboard, built on RepGraph + ActiveBoard
-
 ---
 
 ## v1 (foundation / sandbox) — consolidated status
@@ -75,20 +70,20 @@ globs:
 - [x] TFT-like elimination: players have Life, eliminate at `Life <= 0`, match ends when 1 player remains
 
 ### v3.1 Multi-arena orchestration
-- [~] 8 home boards in planning; up to 4 concurrent arena host boards in combat (**implemented**, automation stabilization in progress)
-- [~] Generalize transfer/return to N pairings simultaneously; inactive home boards while away (**implemented**, automation stabilization in progress)
-- [~] Combat purchases spawn onto the player’s ActiveBoard bench row (**implemented**, automation stabilization in progress)
+- [x] 8 home boards in planning; up to 4 concurrent arena host boards in combat (**implemented**, automation stabilized)
+- [x] Generalize transfer/return to N pairings simultaneously; inactive home boards while away (**implemented**, automation stabilized)
+- [x] Combat purchases spawn onto the player’s ActiveBoard bench row (**implemented**)
+- [x] Automation: `Brawl.Match.MultiArena.Orchestration.4P_2Arenas.LVL_Sandbox`
 
 ### v3.2 ReplicationGraph (required)
 - [x] Implement [UBrawlReplicationGraph](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlNet/Private/Net/BrawlReplicationGraph.cpp:15:0-17:1) routing buckets (match-global vs per-board) + spectator routing
 
 ### v3.3 Spectator/scouting UX (partial until we decide + implement replication policy changes)
 - [~] Board switching + scoreboard; decide spectator economy visibility policy and wire via RepGraph
-- [~] **Player avatar + camera integration (GASP + GameplayCameras):**
-  - Replicated GASP-derived player avatar
-  - Auto-switch to Board camera on `ActiveBoardActor` changes and teleport avatar (TFT-style)
-  - Scoreboard click-to-scout forces Board camera and teleports avatar to scouted board
-  - Spec: `brawl-player-avatar-camera-contract.md`
+- [~] Player avatar + camera integration (GASP + GameplayCameras):
+  - Server-auth scouting state + RepGraph scouted-board routing (**implemented**)
+  - Server-auth teleport hooks + BP [ForceBoardCameraMode()](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Public/Game/BrawlPlayerController.h:33:1-33:29) triggers (**implemented**)
+  - Camera rig/UX polish remains pending (content/BP work)
 
 ### v3.4 Dedicated server readiness + GameLift integration (deferred unless needed)
 - [x] Artifact staging directory for GameLift-collected logs (replay + JSONL)
@@ -98,51 +93,24 @@ globs:
 
 ## v4 (content ramp + balance + UX “playable loop”) — after v3 is stable
 
-### v4.0 Content authoring pipeline validation (“add content without code”)
-- [ ] Lock/confirm content directories + AssetManager scanning stays canonical:
-  - `/Game/Brawl/Data/Units`, `/Abilities`, `/Items`, `/Traits`
-- [ ] Add a lightweight “content validity” gate:
-  - load/resolve all Unit/Ability/Item/Trait PrimaryAssets
-  - assert required fields exist (tags, curves, ability options, etc.)
-  - fail fast in editor/automation if invalid
-- [ ] Create a small “vertical slice” roster (example: 8–12 units):
-  - UnitData: tags + curves + ability options
-  - AbilityData: targeting policy + projectile policy where needed
-  - TraitData/ItemData: enough to validate trait/item loops at scale
-- [ ] Add 1–2 headless/automation stress tests:
-  - spawn ~160 units worst-case approximation and run N seconds
-  - assert: no NaNs, no runaway memory, stable event log invariants
+### v4.0 Content authoring pipeline validity gate
+- [x] AssetManager scanning canonical dirs includes: `/Game/Brawl/Data/Units`, `/Abilities`, `/Items`, `/Traits`, `/Seasons`
+- [x] Automation: `Brawl.Content.ValidityGate.AllAssets.LVL_Sandbox`
+- [ ] Create a small “vertical slice” roster (example: 8–12 units)
+- [ ] Add 1–2 headless/automation stress tests
 - [ ] Allow seeing mutliple battles simulatneously (if performance allows)
 
-### v4.0 Season 0 gating (real feature; pool composition control)
-- [ ] Add a Season DataAsset (PrimaryDataAsset) that allowlists Unit PrimaryAssetIds
-  - Season 0 = initial curated allowlist
-- [ ] Server selects ActiveSeason (default Season 0) and SharedPool composition is derived from:
-  - ActiveSeason allowlist (not “all scanned units”)
-  - Copies-per-unit from economy tuning
-- [ ] Add automation coverage:
-  - with Season 0 allowlist = {A,B,C}, shop rolls never produce units outside {A,B,C}
-  - shared pool counts only exist for allowlisted units
-- [ ] Add minimal debug visibility:
-  - log ActiveSeason at match start + log allowlist size
+### v4.0 Season 0 gating (pool composition control)
+- [x] Season DataAsset exists: `UBrawlSeasonData` (PrimaryAssetType `Season`) with `AllowedUnits`
+- [x] Match selects ActiveSeason: `ABrawlGameState::ActiveSeasonId` (replicated) + [ABrawlGameMode](cci:1://file:///E:/Unreal/BrawlFinal/Brawl/Source/BrawlMatch/Private/Game/BrawlGameMode.cpp:61:0-66:1) sets `DefaultActiveSeasonId`
+- [x] SharedPool comp uses allowlist: `UBrawlSharedPoolSubsystem` filters scanned Units
+- [x] Automation: `Brawl.Economy.Shop.SeasonGating.OffersAreAllowlisted.LVL_Sandbox`
 
-### v4.1 Gameplay breadth (still rules-driven, minimal new systems)
-- [ ] Expand targeting policies (data-driven selection modes + deterministic tie-breaks)
-- [ ] Expand trait tiers/effects using existing TraitData semantics
-- [ ] Add creep rounds / PvE round types (RoundSet-driven)
-
-### v4.2 UX polish (still no gameplay rules in UI)
-- [ ] Move from debug-first overlay to “playable” UI flows:
-  - shop + board + traits + round timer + scoreboard
-- [ ] Spectator/scouting UX polish (board switching, inspect unit loadouts, etc.)
-
-### v4.3 Balance pass (data-only where possible)
-- [ ] Establish baseline tuning assets:
-  - economy tuning, shop odds, damage tuning, cooldown tuning
+### v4.3 Balance pass
+- [ ] Establish baseline tuning assets
 - [ ] Establish a repeatable “balance workflow” (recorded seeds + test scenarios)
-- [ ] Odd player count rule (TFT-like): one unpaired player fights a deterministic “ghost roster” snapshot of another actively-fighting player (rule definition + tests pending)
-- [ ] Cosmetics contract (pre-0.7): avatar skins (masc/fem), board skin, emotes (0.7); server-authored + replay-captured
-  - Spec: `brawl-cosmetics-contract.md`
+- [x] Odd player count rule: unpaired player fights a deterministic ghost roster snapshot of another actively-fighting player
+  - Automation: `Brawl.Match.GhostRoster.ArenaResolvedEvent.LVL_Sandbox`
 
 ---
 
